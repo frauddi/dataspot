@@ -1,0 +1,155 @@
+{
+    // Define workspace folders
+    "folders": [
+        {
+            "path": "." // Root directory of dataspot project
+        }
+    ],
+    "settings": {
+        // Python Environment Configuration
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python", // Default Python interpreter
+        "python.pythonPath": "${workspaceFolder}/.venv/bin/python", // Legacy Python path setting
+        "python.analysis.extraPaths": [ // Additional Python path for imports
+            "${workspaceFolder}/dataspot",
+            "${workspaceFolder}",
+            "${workspaceFolder}/.venv/lib/python3.11/site-packages"
+        ],
+
+        // Formatting settings
+        "[python]": {
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+                "source.fixAll": "explicit",
+                "source.organizeImports": "explicit"
+            },
+            "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "ruff.enable": true,
+        "ruff.organizeImports": true,
+        "ruff.fixAll": true,
+
+        // Python Analysis and Linting Configuration
+        "python.analysis.typeCheckingMode": "basic", // Enable basic type checking
+        "python.linting.enabled": false, // Enable Python linting globally
+        "python.linting.flake8Enabled": false, // DISABLE Flake8
+        "python.linting.mypyEnabled": false, // Keep simple for now
+
+        // Python Auto-Import Settings
+        "python.analysis.autoImportCompletions": true, // Enable automatic import suggestions
+
+        // Format code automatically when saving files
+        "editor.formatOnSave": true,
+
+        // Configure automatic actions when saving files
+        "editor.codeActionsOnSave": {
+            // Organize Python imports
+            "source.organizeImports": "explicit",
+            // Apply all available fixes
+            "source.fixAll": "explicit"
+        },
+
+        // Visual column markers
+        "editor.rulers": [
+            88, // code wrap guide (Ruff/Black)
+            120 // absolute maximum
+        ],
+
+        // Show whitespace characters for better visibility
+        "editor.renderWhitespace": "all",
+        // Show control characters (like line endings)
+        "editor.renderControlCharacters": true,
+
+        // Python standard indentation: 4 spaces
+        "editor.tabSize": 4,
+        // Use spaces instead of tabs for consistency
+        "editor.insertSpaces": true,
+        // Automatically detect file indentation
+        "editor.detectIndentation": true,
+
+        // Enable word wrap for long lines
+        "editor.wordWrap": "on",
+
+        // Colorize matching brackets for better readability
+        "editor.bracketPairColorization.enabled": true,
+        // Show vertical lines to connect matching brackets
+        "editor.guides.bracketPairs": true,
+
+        // Show code overview on the right side
+        "editor.minimap.enabled": true,
+        // Set minimap width to match Ruff/Black line length
+        "editor.minimap.maxColumn": 88,
+
+        // File cleanup settings
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+        "files.eol": "\n",
+
+        // Environment Variables by OS
+        "terminal.integrated.env.windows": {
+            "PYTHONPATH": "${workspaceFolder}/.venv/Lib/site-packages"
+        },
+        "terminal.integrated.env.osx": {
+            "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/.venv/lib/python3.11/site-packages"
+        },
+        "terminal.integrated.env.linux": {
+            "PYTHONPATH": "${workspaceFolder}/.venv/lib/python3.11/site-packages"
+        },
+
+        // Search and file settings
+        "search.exclude": {
+            "**/.venv": true,
+            "**/__pycache__": true,
+            "**/.pytest_cache": true,
+            ".pytest_cache": true,
+            "__pycache__": true,
+            ".coverage": true
+        },
+
+        // Files to exclude from explorer
+        "files.exclude": {
+            "**/__pycache__": true,
+            "**/*.pyc": true,
+            "**/.pytest_cache": true,
+            "**/.venv": true,
+            "**/*.egg-info": true,
+            "**/build": true,
+            "**/dist": true
+        },
+
+        // File Type Associations
+        "files.associations": {
+            "*.env": "plaintext",
+            "requirements*.txt": "pip-requirements",
+            "pyproject.toml": "toml",
+            "*.py": "python",
+            "*.pyi": "python",
+            "*.ipynb": "jupyter",
+            "Makefile": "makefile",
+            ".pylintrc": "ini",
+            ".coveragerc": "ini"
+        },
+
+        // Testing Configuration for dataspot
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.nosetestsEnabled": false,
+        "python.testing.pytestArgs": [
+            "tests", // Test discovery root directory
+            "-v", // Verbose output
+            "--tb=short", // Shorter traceback format
+            "--cov=dataspot", // Enable coverage for dataspot directory (no "apps")
+            "--cov-report=term-missing" // Show missing coverage in terminal
+        ],
+        "python.testing.autoTestDiscoverOnSaveEnabled": true
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "ms-python.vscode-pylance",
+            "charliermarsh.ruff",
+            "njpwerner.autodocstring",
+            "littlefoxteam.vscode-python-test-adapter"
+        ]
+    }
+}
