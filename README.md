@@ -1,7 +1,6 @@
 # Dataspot 🔥
 
 > **Find data concentration patterns and dataspots in your datasets**
-> *Created by [@eliosf27](https://github.com/eliosf27) at [Frauddi](https://frauddi.com)*
 
 [![PyPI version](https://badge.fury.io/py/dataspot.svg)](https://pypi.org/project/dataspot/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -231,6 +230,12 @@ def analyze_large_dataset(data, chunk_size=50000):
 | Hard to interpret | **Business-friendly hierarchy** |
 | Generic approach | **Built for real-world analysis** |
 
+## Dataspot in action
+
+![Dataspot in action - Finding data concentration patterns](dataspot.gif)
+
+See Dataspot in action as it discovers data concentration patterns and dataspots in real-time
+
 ## 🔧 Installation & Requirements
 
 ```bash
@@ -245,7 +250,7 @@ pip install -e ".[dev]"
 
 **Requirements:**
 
-- Python 3.8+
+- Python 3.11+
 - No heavy dependencies (just standard library + optional speedups)
 
 ## 🛠️ Development Commands
@@ -267,7 +272,6 @@ The project includes a Makefile with useful development commands:
 ## 📚 Documentation
 
 - 📖 [User Guide](docs/user-guide.md) - Complete usage documentation
-- 🔧 [API Reference](docs/api-reference.md) - Detailed API documentation
 - 💡 [Examples](examples/) - Real-world usage examples
 - 🤝 [Contributing](CONTRIBUTING.md) - How to contribute
 
@@ -297,7 +301,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- **Created by [@eliosf27](https://github.com/tu-usuario)** - Original algorithm and implementation
+- **Created by [@eliosf27](https://github.com/eliosf27)** - Original algorithm and implementation
 - **Sponsored by [Frauddi](https://frauddi.com)** - Production testing and open source support
 - **Inspired by real fraud detection challenges** - Built to solve actual problems
 
@@ -306,8 +310,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - 🏠 [Homepage](https://github.com/frauddi/dataspot)
 - 📦 [PyPI Package](https://pypi.org/project/dataspot/) *(coming soon)*
 - 🐛 [Issue Tracker](https://github.com/frauddi/dataspot/issues)
-- 💬 [Discussions](https://github.com/frauddi/dataspot/discussions)
-- 🐦 [Follow updates on Twitter](https://twitter.com/frauddi)
 
 ---
 
