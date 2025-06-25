@@ -273,7 +273,7 @@ The project includes a Makefile with useful development commands:
 
 - 📖 [User Guide](docs/user-guide.md) - Complete usage documentation
 - 💡 [Examples](examples/) - Real-world usage examples
-- 🤝 [Contributing](CONTRIBUTING.md) - How to contribute
+- 🤝 [Contributing](docs/CONTRIBUTING.md) - How to contribute
 
 ## 🌟 Why Open Source?
 
@@ -293,7 +293,7 @@ We welcome contributions! Whether you're:
 - 📝 Improving documentation
 - 🔧 Adding new analysis methods
 
-See our [Contributing Guide](CONTRIBUTING.md) for details.
+See our [Contributing Guide](docs/CONTRIBUTING.md) for details.
 
 ## 📄 License
 
