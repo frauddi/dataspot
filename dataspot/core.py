@@ -246,6 +246,204 @@ class Dataspot:
         _traverse(tree)
         return patterns
 
+    def tree(
+        self,
+        data: List[Dict[str, Any]],
+        fields: List[str],
+        query: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Build and return hierarchical tree structure in JSON format.
+
+        Args:
+            data: List of records (dictionaries)
+            fields: List of field names to analyze hierarchically
+            query: Optional filters to apply to data
+            **kwargs: Additional filtering options
+                - top: Number of top elements to consider per level (default: 5)
+                - min_value: Minimum count for a node to be included
+                - min_percentage: Minimum percentage for a node to be included
+                - max_value: Maximum count for a node to be included
+                - max_percentage: Maximum percentage for a node to be included
+                - min_depth: Minimum depth for nodes to be included
+                - max_depth: Maximum depth to analyze (limits tree depth)
+                - contains: Node name must contain this text
+                - exclude: Node name must NOT contain these texts
+                - regex: Node name must match this regex pattern
+
+        Returns:
+            Dictionary representing the hierarchical tree structure
+
+        Example:
+            {
+                'name': 'root',
+                'children': [
+                    {
+                        'name': 'country=US',
+                        'value': 150,
+                        'percentage': 75.0,
+                        'node': 1,
+                        'children': [
+                            {
+                                'name': 'device=mobile',
+                                'value': 120,
+                                'percentage': 60.0,
+                                'node': 2
+                            }
+                        ]
+                    }
+                ],
+                'value': 200,
+                'percentage': 100.0,
+                'node': 0,
+                'top': 5
+            }
+
+        """
+        # Filter data based on query
+        if query:
+            data = [record for record in data if self._matches_query(record, query)]
+
+        # Get top parameter from kwargs with default value
+        top = kwargs.get("top", 5)
+
+        if not data:
+            return {
+                "name": "root",
+                "children": [],
+                "value": 0,
+                "percentage": 0.0,
+                "node": 0,
+                "top": top,
+            }
+
+        # Build the internal tree structure
+        internal_tree = self._build_tree(data, fields)
+        total_records = len(data)
+
+        # Extract patterns and apply filters using existing functions
+        all_patterns = self._extract_patterns(internal_tree, total_records)
+
+        # Create filter kwargs using helper method
+        filter_kwargs = self._build_tree_filter_kwargs(**kwargs)
+
+        # Apply filters using existing methods
+        filtered_patterns = self._apply_filters(all_patterns, **filter_kwargs)
+
+        # Convert to clean JSON format
+        return self._build_clean_tree_from_patterns(
+            filtered_patterns, total_records, top
+        )
+
+    def _build_tree_filter_kwargs(self, **kwargs) -> Dict[str, Any]:
+        """Build filter kwargs for tree method."""
+        # Parameter mapping: tree param -> filter param
+        param_mapping = {"min_value": "min_count", "max_value": "max_count"}
+
+        # Direct pass-through parameters
+        pass_through = [
+            "min_percentage",
+            "max_percentage",
+            "min_depth",
+            "max_depth",
+            "contains",
+            "exclude",
+            "regex",
+        ]
+
+        filter_kwargs = {}
+
+        # Apply parameter mapping and pass-through parameters
+        for key, value in kwargs.items():
+            if value is not None:
+                if key in param_mapping:
+                    filter_kwargs[param_mapping[key]] = value
+                elif key in pass_through:
+                    filter_kwargs[key] = value
+                else:
+                    filter_kwargs[key] = value
+
+        return filter_kwargs
+
+    def _build_clean_tree_from_patterns(
+        self, patterns: List[Pattern], total_records: int, top: int
+    ) -> Dict[str, Any]:
+        """Build tree structure from filtered patterns."""
+        if not patterns:
+            return {
+                "name": "root",
+                "children": [],
+                "value": total_records,
+                "percentage": 100.0,
+                "node": 0,
+                "top": top,
+            }
+
+        # Group patterns by depth and path
+        tree_data = {}
+
+        for pattern in patterns:
+            path_parts = pattern.path.split(" > ")
+            current = tree_data
+
+            for i, part in enumerate(path_parts):
+                if part not in current:
+                    current[part] = {
+                        "count": 0,
+                        "percentage": 0.0,
+                        "depth": i + 1,
+                        "children": {},
+                        "samples": pattern.samples if i == len(path_parts) - 1 else [],
+                    }
+
+                # Update count for this exact pattern match
+                if i == len(path_parts) - 1:  # Last part of path
+                    current[part]["count"] = pattern.count
+                    current[part]["percentage"] = pattern.percentage
+                    current[part]["samples"] = pattern.samples
+
+                current = current[part]["children"]
+
+        # Convert to clean tree format
+        def _convert_tree_data(
+            data: Dict[str, Any], level: int = 1
+        ) -> List[Dict[str, Any]]:
+            children = []
+            # Sort by count and take top N
+            sorted_items = sorted(
+                data.items(), key=lambda x: x[1].get("count", 0), reverse=True
+            )[:top]
+
+            for name, node_data in sorted_items:
+                node = {
+                    "name": name,
+                    "value": node_data["count"],
+                    "percentage": node_data["percentage"],
+                    "node": level,
+                }
+
+                # Add children if they exist
+                if node_data["children"]:
+                    child_nodes = _convert_tree_data(node_data["children"], level + 1)
+                    if child_nodes:
+                        node["children"] = child_nodes
+
+                children.append(node)
+
+            return children
+
+        # Build root node
+        root_children = _convert_tree_data(tree_data)
+
+        return {
+            "name": "root",
+            "children": root_children,
+            "value": total_records,
+            "percentage": 100.0,
+            "node": 0,
+            "top": top,
+        }
+
     def _preprocess_value(self, field: str, value: Any, record: Dict[str, Any]) -> Any:
         """Preprocess field values based on type and custom preprocessors."""
         # Apply custom preprocessor if available

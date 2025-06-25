@@ -162,9 +162,34 @@ def example_no_query_comparison():
     print()
 
 
+def example_tree_with_query():
+    """Show how tree method works with query filtering."""
+    import json
+
+    print("=== Tree Structure with Query ===")
+    print("Using tree() method for hierarchical visualization")
+
+    dataspot = Dataspot()
+
+    # Tree without query
+    print("Complete tree structure:")
+    tree_all = dataspot.tree(ecommerce_data, ["country", "device"], top=3)
+    print(json.dumps(tree_all, indent=2))
+
+    # Tree with query
+    print("\nFiltered tree (US only):")
+    query = {"country": "US"}
+    tree_filtered = dataspot.tree(
+        ecommerce_data, ["device", "user_type"], query=query, top=3
+    )
+    print(json.dumps(tree_filtered, indent=2))
+    print()
+
+
 if __name__ == "__main__":
     example_single_field_query()
     example_multiple_field_query()
     example_list_value_query()
     example_mixed_query_types()
     example_no_query_comparison()
+    example_tree_with_query()

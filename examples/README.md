@@ -106,6 +106,7 @@ Complete use cases based on real business problems:
 - Marketing campaign analysis
 - Sales performance
 - Website optimization
+- Dashboard tree visualization
 
 **Use cases:** Complete business applications, business analysis.
 
@@ -145,6 +146,7 @@ python 03_text_pattern_filtering.py
 python 04_advanced_filtering.py
 python 05_data_quality_and_edge_cases.py
 python 06_real_world_scenarios.py
+python 07_tree_visualization.py
 ```
 
 ### Run All Examples
@@ -172,6 +174,7 @@ Each example corresponds to specific test cases:
 | `04_advanced_filtering.py` | `TestAdvancedFiltering` |
 | `05_data_quality_and_edge_cases.py` | Special cases from all tests |
 | `06_real_world_scenarios.py` | Practical applications |
+| `07_tree_visualization.py` | Tree method functionality |
 
 ## Available Filtering Parameters
 
