@@ -3,6 +3,7 @@
 This module demonstrates complete real-world use cases for Dataspot analysis,
 showing how different filtering techniques solve actual business problems.
 """
+
 from dataspot import Dataspot
 
 
@@ -419,9 +420,65 @@ def website_analytics_optimization():
     print()
 
 
+def dashboard_tree_visualization():
+    """Create tree structures for dashboard visualization."""
+    import json
+
+    print("=== DASHBOARD TREE VISUALIZATION ===")
+    print("Building hierarchical trees for interactive dashboards...")
+
+    # Simulate dashboard data
+    dashboard_data = []
+    countries = ["US", "EU", "CA", "AS"]
+    devices = ["mobile", "desktop", "tablet"]
+    user_types = ["premium", "free", "enterprise"]
+
+    for i in range(200):
+        dashboard_data.append(
+            {
+                "country": countries[i % 4],
+                "device": devices[i % 3],
+                "user_type": user_types[i % 3],
+                "revenue_tier": ["high", "medium", "low"][i % 3],
+                "activity": ["active", "moderate", "low"][i % 3],
+            }
+        )
+
+    dataspot = Dataspot()
+
+    # Main dashboard tree
+    print("1. Main Dashboard Tree (Country → Device → User Type):")
+    main_tree = dataspot.tree(
+        dashboard_data,
+        fields=["country", "device", "user_type"],
+        min_percentage=5,
+        top=3,
+    )
+    print(json.dumps(main_tree, indent=2))
+
+    # Revenue-focused tree
+    print("\n2. Revenue-Focused Tree:")
+    revenue_tree = dataspot.tree(
+        dashboard_data, fields=["revenue_tier", "user_type"], min_value=5, top=5
+    )
+    print(json.dumps(revenue_tree, indent=2))
+
+    # User activity tree with filtering
+    print("\n3. High-Activity Users Tree:")
+    activity_tree = dataspot.tree(
+        dashboard_data,
+        fields=["country", "device"],
+        query={"activity": "active"},
+        top=4,
+    )
+    print(json.dumps(activity_tree, indent=2))
+    print()
+
+
 if __name__ == "__main__":
     fraud_detection_analysis()
     customer_support_optimization()
     marketing_campaign_analysis()
     sales_performance_analysis()
     website_analytics_optimization()
+    dashboard_tree_visualization()
