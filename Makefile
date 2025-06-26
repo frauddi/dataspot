@@ -1,4 +1,4 @@
-PYTHON_VERSION = 3.11
+PYTHON_VERSION = 3.9
 VENV_NAME = .venv
 
 .PHONY: lint lint-fix check tests clean

@@ -5,7 +5,7 @@
 [![PyPI version](https://badge.fury.io/py/dataspot.svg)](https://pypi.org/project/dataspot/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Maintained by Frauddi](https://img.shields.io/badge/Maintained%20by-Frauddi-blue.svg)](https://frauddi.com)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 Dataspot automatically discovers **where your data concentrates**, helping you identify patterns, anomalies, and insights in datasets. Originally developed for fraud detection at Frauddi, now available as open source.
 
@@ -250,7 +250,7 @@ pip install -e ".[dev]"
 
 **Requirements:**
 
-- Python 3.11+
+- Python 3.9+
 - No heavy dependencies (just standard library + optional speedups)
 
 ## 🛠️ Development Commands
@@ -265,7 +265,7 @@ The project includes a Makefile with useful development commands:
 | `make check` | Run both linting and tests |
 | `make clean` | Remove cache files, build artifacts, and temporary files |
 | `make venv-clean` | Remove the virtual environment |
-| `make venv-create` | Create a new virtual environment with Python 3.11 |
+| `make venv-create` | Create a new virtual environment with Python 3.9+ |
 | `make venv-install` | Install the uv package manager |
 | `make install` | Create virtual environment and install the dependencies |
 

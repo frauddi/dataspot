@@ -7,6 +7,7 @@ including path expansion, pattern generation, and edge cases.
 from typing import Any
 
 from dataspot import Dataspot
+from dataspot.analyzers.base import Base
 
 
 class TestBasicListHandling:
@@ -120,100 +121,91 @@ class TestBasicListHandling:
 
 
 class TestListPathExpansion:
-    """Test cases for list path expansion logic."""
+    """Test cases for path expansion when lists are involved."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.dataspot = Dataspot()
+        self.base = Base()
 
     def test_path_expansion_single_list(self):
-        """Test path expansion for single list field."""
-        data = [{"tags": ["a", "b", "c"], "id": 1}]
+        """Test path expansion with single list field."""
+        data = [{"tags": ["premium", "active"], "id": 1}]
 
         # Test internal path generation
-        paths = self.dataspot._get_record_paths(data[0], ["tags", "id"])
+        paths = self.base._get_record_paths(data[0], ["tags", "id"])
 
-        # Should generate separate paths for each list item
-        expected_paths = [
-            ["tags=a", "id=1"],
-            ["tags=b", "id=1"],
-            ["tags=c", "id=1"],
-        ]
+        # Should generate 2 paths (one for each tag)
+        assert len(paths) == 2
+        assert ["tags=premium", "id=1"] in paths
+        assert ["tags=active", "id=1"] in paths
 
-        assert len(paths) == 3
-        for expected_path in expected_paths:
-            assert expected_path in paths
+        # Test actual pattern finding
+        patterns = self.dataspot.find(data, ["tags", "id"])
+        tag_patterns = [p for p in patterns if "tags=" in p.path]
+        assert len(tag_patterns) >= 2  # At least premium and active
 
     def test_path_expansion_multiple_lists(self):
-        """Test path expansion for multiple list fields."""
-        data = [{"tags": ["x", "y"], "categories": ["1", "2"], "id": 1}]
-
-        paths = self.dataspot._get_record_paths(data[0], ["tags", "categories", "id"])
-
-        # Should generate cartesian product: 2 * 2 * 1 = 4 paths
-        expected_paths = [
-            ["tags=x", "categories=1", "id=1"],
-            ["tags=x", "categories=2", "id=1"],
-            ["tags=y", "categories=1", "id=1"],
-            ["tags=y", "categories=2", "id=1"],
+        """Test path expansion with multiple list fields."""
+        data = [
+            {"tags": ["premium", "active"], "categories": ["tech", "business"], "id": 1}
         ]
 
+        # Test internal path generation
+        paths = self.base._get_record_paths(data[0], ["tags", "categories", "id"])
+
+        # Should generate 4 paths (2 tags × 2 categories)
         assert len(paths) == 4
+        expected_paths = [
+            ["tags=premium", "categories=tech", "id=1"],
+            ["tags=premium", "categories=business", "id=1"],
+            ["tags=active", "categories=tech", "id=1"],
+            ["tags=active", "categories=business", "id=1"],
+        ]
         for expected_path in expected_paths:
             assert expected_path in paths
 
     def test_path_expansion_mixed_fields(self):
         """Test path expansion with mix of list and scalar fields."""
-        data = [{"list_field": ["a", "b"], "scalar_field": "x", "id": 1}]
+        data = [{"tags": ["premium", "active"], "scalar_field": "value", "id": 1}]
 
-        paths = self.dataspot._get_record_paths(
-            data[0], ["list_field", "scalar_field", "id"]
-        )
+        # Test internal path generation
+        paths = self.base._get_record_paths(data[0], ["tags", "scalar_field", "id"])
 
-        # Should generate: 2 * 1 * 1 = 2 paths
-        expected_paths = [
-            ["list_field=a", "scalar_field=x", "id=1"],
-            ["list_field=b", "scalar_field=x", "id=1"],
-        ]
-
+        # Should generate 2 paths (one for each tag)
         assert len(paths) == 2
-        for expected_path in expected_paths:
-            assert expected_path in paths
+        assert ["tags=premium", "scalar_field=value", "id=1"] in paths
+        assert ["tags=active", "scalar_field=value", "id=1"] in paths
 
     def test_path_expansion_empty_list(self):
         """Test path expansion with empty list."""
         data = [{"empty_list": [], "scalar": "value"}]
 
-        paths = self.dataspot._get_record_paths(data[0], ["empty_list", "scalar"])
+        paths = self.base._get_record_paths(data[0], ["empty_list", "scalar"])
 
-        # Empty list should not generate any paths
-        # Or might generate a path with empty value - depends on implementation
-        assert isinstance(paths, list)
+        # Empty lists should not generate any paths
+        assert len(paths) == 0
 
     def test_path_expansion_large_lists(self):
-        """Test path expansion performance with large lists."""
-        # Create record with moderately large lists
-        large_data = [
-            {
-                "tags": [f"tag_{i}" for i in range(10)],
-                "categories": [f"cat_{i}" for i in range(5)],
-                "id": 1,
-            }
-        ]
+        """Test path expansion with large lists (performance check)."""
+        # Create record with relatively large lists
+        large_tags = [f"tag_{i}" for i in range(20)]
+        large_categories = [f"cat_{i}" for i in range(15)]
+        data = [{"tags": large_tags, "categories": large_categories, "id": 1}]
 
-        paths = self.dataspot._get_record_paths(
-            large_data[0], ["tags", "categories", "id"]
-        )
+        # Test internal path generation
+        paths = self.base._get_record_paths(data[0], ["tags", "categories", "id"])
 
-        # Should generate 10 * 5 * 1 = 50 paths
-        assert len(paths) == 50
+        # Should generate 20 × 15 = 300 paths
+        assert len(paths) == 300
 
-        # Verify path structure
-        for path in paths:
-            assert len(path) == 3  # tags, categories, id
-            assert path[0].startswith("tags=tag_")
-            assert path[1].startswith("categories=cat_")
-            assert path[2] == "id=1"
+        # Sample some paths to verify correctness
+        assert ["tags=tag_0", "categories=cat_0", "id=1"] in paths
+        assert ["tags=tag_19", "categories=cat_14", "id=1"] in paths
+
+        # Test that actual pattern finding still works (with limits)
+        patterns = self.dataspot.find(data, ["tags", "categories"], limit=100)
+        assert len(patterns) <= 100  # Should respect limit
 
 
 class TestListIntegrationWithPatterns:
@@ -527,8 +519,23 @@ class TestListCustomPreprocessing:
             {"emails": ["admin@company.com"], "department": "ops"},
         ]
 
-        # Add emails to email_patterns for preprocessing
-        self.dataspot.email_patterns.append("emails")
+        # Add custom email preprocessor for the 'emails' field
+        from dataspot.analyzers.preprocessors import email_preprocessor
+
+        def list_email_preprocessor(value):
+            if isinstance(value, list):
+                # Apply email preprocessing to each item in the list
+                result = []
+                for item in value:
+                    processed = email_preprocessor(item)
+                    if isinstance(processed, list):
+                        result.extend(processed)
+                    else:
+                        result.append(processed)
+                return result
+            return email_preprocessor(value)
+
+        self.dataspot.add_preprocessor("emails", list_email_preprocessor)
 
         patterns = self.dataspot.find(email_list_data, ["emails", "department"])
 

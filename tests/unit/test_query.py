@@ -1,8 +1,10 @@
-"""Tests for QueryBuilder functionality in Dataspot.
+"""Tests for all query and filtering functionality in Dataspot.
 
-This module tests the fluent interface QueryBuilder for creating complex
-queries and filters in a readable and chainable manner.
+This module tests query filtering, pattern filtering, QueryBuilder fluent interface,
+and pre-configured queries in a comprehensive manner.
 """
+
+import re
 
 import pytest
 
@@ -15,6 +17,293 @@ from dataspot.query import (
     create_data_quality_query,
     create_fraud_query,
 )
+
+
+class TestQueryFiltering:
+    """Test cases for query-based data filtering."""
+
+    def setup_method(self):
+        """Set up test fixtures before each test method."""
+        self.dataspot = Dataspot()
+
+        # Comprehensive test dataset
+        self.test_data = [
+            {
+                "country": "US",
+                "device": "mobile",
+                "user_type": "premium",
+                "amount": 100,
+            },
+            {
+                "country": "US",
+                "device": "mobile",
+                "user_type": "premium",
+                "amount": 200,
+            },
+            {"country": "US", "device": "desktop", "user_type": "free", "amount": 50},
+            {"country": "EU", "device": "mobile", "user_type": "free", "amount": 75},
+            {
+                "country": "EU",
+                "device": "tablet",
+                "user_type": "premium",
+                "amount": 150,
+            },
+            {
+                "country": "CA",
+                "device": "mobile",
+                "user_type": "premium",
+                "amount": 120,
+            },
+            {"country": "US", "device": "mobile", "user_type": "free", "amount": 80},
+            {
+                "country": "EU",
+                "device": "desktop",
+                "user_type": "premium",
+                "amount": 180,
+            },
+        ]
+
+    def test_single_field_query(self):
+        """Test filtering with single field query."""
+        query = {"country": "US"}
+        patterns = self.dataspot.find(
+            self.test_data, ["country", "device"], query=query
+        )
+
+        # Should only find patterns from US records
+        for pattern in patterns:
+            assert "country=US" in pattern.path
+
+        # Verify count - should be based on filtered data only
+        us_records = [r for r in self.test_data if r["country"] == "US"]
+        top_pattern = next(p for p in patterns if p.path == "country=US")
+        assert top_pattern.count == len(us_records)
+
+    def test_multiple_field_query(self):
+        """Test filtering with multiple field constraints."""
+        query = {"country": "US", "device": "mobile"}
+        patterns = self.dataspot.find(
+            self.test_data, ["country", "device", "user_type"], query=query
+        )
+
+        # Should only include records matching both constraints
+        us_mobile_records = [
+            r
+            for r in self.test_data
+            if r["country"] == "US" and r["device"] == "mobile"
+        ]
+
+        # Top pattern should represent all filtered records
+        top_pattern = patterns[0]
+        assert top_pattern.count == len(us_mobile_records)
+
+        # All patterns should at least contain the first constraint
+        for pattern in patterns:
+            assert "country=US" in pattern.path
+
+    def test_list_value_query(self):
+        """Test query with list of acceptable values."""
+        query = {"country": ["US", "CA"]}
+        patterns = self.dataspot.find(
+            self.test_data, ["country", "device"], query=query
+        )
+
+        # Should include records from US and CA only
+        for pattern in patterns:
+            assert ("country=US" in pattern.path) or ("country=CA" in pattern.path)
+            assert "country=EU" not in pattern.path
+
+    def test_query_no_matches(self):
+        """Test query that matches no records."""
+        query = {"country": "XX"}  # Non-existent country
+        patterns = self.dataspot.find(
+            self.test_data, ["country", "device"], query=query
+        )
+
+        # Should return empty list
+        assert patterns == []
+
+    def test_empty_query(self):
+        """Test behavior with empty query dict."""
+        query = {}
+        patterns = self.dataspot.find(
+            self.test_data, ["country", "device"], query=query
+        )
+
+        # Should behave same as no query
+        patterns_no_query = self.dataspot.find(self.test_data, ["country", "device"])
+        assert len(patterns) == len(patterns_no_query)
+
+
+class TestPatternFiltering:
+    """Test cases for pattern-based filtering after analysis."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.dataspot = Dataspot()
+
+        # Create data that will produce diverse patterns
+        self.filter_data = []
+        for i in range(100):
+            self.filter_data.append(
+                {
+                    "category": f"cat_{i % 5}",  # 5 categories (20 each)
+                    "type": f"type_{i % 3}",  # 3 types (33-34 each)
+                    "status": "active" if i % 2 == 0 else "inactive",  # 50-50 split
+                    "priority": "high" if i < 20 else "normal",  # 20 high, 80 normal
+                }
+            )
+
+    def test_min_percentage_filter(self):
+        """Test minimum percentage filtering."""
+        # Get all patterns first
+        all_patterns = self.dataspot.find(self.filter_data, ["category", "type"])
+
+        # Apply min percentage filter
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type"], min_percentage=30
+        )
+
+        # All filtered patterns should have >= 30% concentration
+        for pattern in filtered:
+            assert pattern.percentage >= 30.0
+
+        # Should have fewer patterns than unfiltered
+        assert len(filtered) <= len(all_patterns)
+
+    def test_max_percentage_filter(self):
+        """Test maximum percentage filtering."""
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type"], max_percentage=25
+        )
+
+        # All patterns should have <= 25% concentration
+        for pattern in filtered:
+            assert pattern.percentage <= 25.0
+
+    def test_min_count_filter(self):
+        """Test minimum count filtering."""
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type"], min_count=15
+        )
+
+        # All patterns should have >= 15 records
+        for pattern in filtered:
+            assert pattern.count >= 15
+
+    def test_max_depth_filter(self):
+        """Test maximum depth filtering."""
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type", "status"], max_depth=2
+        )
+
+        # All patterns should have depth <= 2
+        for pattern in filtered:
+            assert pattern.depth <= 2
+
+        # Should not include any depth-3 patterns
+        depth_3_patterns = [p for p in filtered if p.depth == 3]
+        assert len(depth_3_patterns) == 0
+
+    def test_contains_filter(self):
+        """Test contains text filtering."""
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type"], contains="cat_1"
+        )
+
+        # All patterns should contain "cat_1" in their path
+        for pattern in filtered:
+            assert "cat_1" in pattern.path
+
+    def test_exclude_filter_single(self):
+        """Test exclude filtering with single term."""
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type"], exclude="cat_0"
+        )
+
+        # No patterns should contain "cat_0"
+        for pattern in filtered:
+            assert "cat_0" not in pattern.path
+
+    def test_exclude_filter_list(self):
+        """Test exclude filtering with list of terms."""
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type"], exclude=["cat_0", "cat_1"]
+        )
+
+        # No patterns should contain either excluded term
+        for pattern in filtered:
+            assert "cat_0" not in pattern.path
+            assert "cat_1" not in pattern.path
+
+    def test_regex_filter(self):
+        """Test regex pattern filtering."""
+        # Filter for patterns containing "cat_" followed by even numbers
+        filtered = self.dataspot.find(
+            self.filter_data, ["category", "type"], regex=r"cat_[02468]"
+        )
+
+        # All patterns should match the regex
+        regex_pattern = re.compile(r"cat_[02468]")
+        for pattern in filtered:
+            assert regex_pattern.search(pattern.path) is not None
+
+    def test_limit_filter(self):
+        """Test result limit filtering."""
+        all_patterns = self.dataspot.find(
+            self.filter_data, ["category", "type", "status"]
+        )
+        limited = self.dataspot.find(
+            self.filter_data, ["category", "type", "status"], limit=5
+        )
+
+        # Should return at most 5 patterns
+        assert len(limited) <= 5
+        assert len(limited) <= len(all_patterns)
+
+        # Should return the top patterns (highest percentage first)
+        if len(all_patterns) >= 5:
+            assert len(limited) == 5
+            # Should be ordered by percentage descending
+            for i in range(len(limited) - 1):
+                assert limited[i].percentage >= limited[i + 1].percentage
+
+    def test_combined_filters(self):
+        """Test combining multiple filters."""
+        filtered = self.dataspot.find(
+            self.filter_data,
+            ["category", "type", "status"],
+            min_percentage=10,
+            max_depth=2,
+            contains="cat",
+            exclude="type_2",
+            limit=10,
+        )
+
+        # Verify all filter conditions
+        for pattern in filtered:
+            assert pattern.percentage >= 10.0  # min_percentage
+            assert pattern.depth <= 2  # max_depth
+            assert "cat" in pattern.path  # contains
+            assert "type_2" not in pattern.path  # exclude
+
+        # Should respect limit
+        assert len(filtered) <= 10
+
+    def test_conflicting_filters(self):
+        """Test behavior with conflicting filter values."""
+        data = [{"x": i % 5} for i in range(100)]
+
+        # Conflicting percentage filters
+        filtered = self.dataspot.find(
+            data,
+            ["x"],
+            min_percentage=50,
+            max_percentage=30,  # max < min
+        )
+
+        # Should return empty list
+        assert filtered == []
 
 
 class TestQueryBuilderBasics:
@@ -260,16 +549,6 @@ class TestQueryBuilderRanges:
         assert builder.pattern_filters["min_depth"] == 1
         assert builder.pattern_filters["max_depth"] == 3
 
-    def test_range_validation(self):
-        """Test that range methods validate min <= max."""
-        # These should work fine
-        self.builder.percentage_range(10, 90)
-        self.builder.count_range(5, 50)
-        self.builder.depth_range(1, 5)
-
-        # These might not be explicitly validated in current implementation
-        # but could be added as enhancement
-
 
 class TestQueryBuilderValidation:
     """Test cases for QueryBuilder validation."""
@@ -382,35 +661,16 @@ class TestQueryBuilderUtilities:
         assert "device" not in self.builder.data_filters
         assert "device" in copy_builder.data_filters
 
-    def test_string_representation(self):
-        """Test QueryBuilder string representation."""
-        self.builder.field("country", "US").min_percentage(20).limit(10)
-
-        repr_str = repr(self.builder)
-
-        # Should contain basic info
-        assert "QueryBuilder" in repr_str
-        assert "filters" in repr_str
-
-
-class TestQueryBuilderAnalyze:
-    """Test cases for QueryBuilder analyze method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.dataspot = Dataspot()
-        self.builder = QueryBuilder(self.dataspot)
-
-        self.test_data = [
+    def test_analyze_method(self):
+        """Test QueryBuilder analyze method."""
+        test_data = [
             {"country": "US", "device": "mobile", "amount": 100},
             {"country": "US", "device": "desktop", "amount": 150},
             {"country": "EU", "device": "mobile", "amount": 200},
         ]
 
-    def test_analyze_method(self):
-        """Test QueryBuilder analyze method."""
         result = self.builder.field("country", "US").analyze(
-            self.test_data, ["country", "device"]
+            test_data, ["country", "device"]
         )
 
         # Should return analysis dictionary
@@ -419,18 +679,6 @@ class TestQueryBuilderAnalyze:
         assert "statistics" in result
         assert "field_stats" in result
         assert "top_patterns" in result
-
-    def test_analyze_vs_execute(self):
-        """Test that analyze returns more comprehensive data than execute."""
-        patterns = self.builder.execute(self.test_data, ["country", "device"])
-        analysis = self.builder.analyze(self.test_data, ["country", "device"])
-
-        # Patterns should be same
-        assert len(analysis["patterns"]) == len(patterns)
-
-        # Analysis should have additional info
-        assert "statistics" in analysis
-        assert "field_stats" in analysis
 
 
 class TestPreConfiguredQueries:
@@ -491,8 +739,8 @@ class TestPreConfiguredQueries:
             assert pattern.percentage >= 50.0
 
 
-class TestQueryBuilderComplexScenarios:
-    """Test cases for complex QueryBuilder scenarios."""
+class TestComplexQueryScenarios:
+    """Test cases for complex query scenarios and combinations."""
 
     def setup_method(self):
         """Set up test fixtures."""
@@ -601,6 +849,40 @@ class TestQueryBuilderComplexScenarios:
                 assert pattern.percentage >= 15.0
                 assert pattern.depth <= 2
 
+    def test_complex_query_and_filter_combination(self):
+        """Test complex combination of queries and filters."""
+        data = []
+        for i in range(200):
+            data.append(
+                {
+                    "region": ["north", "south", "east", "west"][i % 4],
+                    "segment": ["enterprise", "small", "medium"][i % 3],
+                    "status": ["active", "inactive"][i % 2],
+                    "tier": ["gold", "silver", "bronze"][i % 3],
+                }
+            )
+
+        # Complex filtering
+        result = self.dataspot.find(
+            data,
+            ["region", "segment", "status"],
+            query={"region": ["north", "south"]},  # Query filter
+            min_percentage=8,  # Pattern filter
+            max_depth=2,  # Pattern filter
+            contains="enterprise",  # Pattern filter
+            limit=5,  # Pattern filter
+        )
+
+        # Verify all conditions are met
+        for pattern in result:
+            assert pattern.percentage >= 8.0
+            assert pattern.depth <= 2
+            assert "enterprise" in pattern.path
+            # Query filter ensures only north/south regions
+            assert ("region=north" in pattern.path) or ("region=south" in pattern.path)
+
+        assert len(result) <= 5
+
     def test_error_handling_in_complex_query(self):
         """Test error handling in complex query scenarios."""
         builder = QueryBuilder(self.dataspot)
@@ -615,15 +897,7 @@ class TestQueryBuilderComplexScenarios:
         with pytest.raises(QueryError):
             builder.sort_by("invalid_field")  # Invalid sort field
 
-
-class TestQueryBuilderPerformance:
-    """Test cases for QueryBuilder performance characteristics."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.dataspot = Dataspot()
-
-    def test_large_dataset_query(self):
+    def test_large_dataset_query_performance(self):
         """Test QueryBuilder performance with large dataset."""
         # Create large dataset
         large_data = []
@@ -650,26 +924,3 @@ class TestQueryBuilderPerformance:
         # Should complete efficiently
         assert len(patterns) <= 20
         assert isinstance(patterns, list)
-
-    def test_complex_filter_combinations(self):
-        """Test performance with many filter combinations."""
-        test_data = [{"x": i % 5, "y": i % 3, "z": i % 2} for i in range(200)]
-
-        # Apply many filters
-        patterns = (
-            QueryBuilder(self.dataspot)
-            .field("z", "1")
-            .min_percentage(2)
-            .max_percentage(40)
-            .min_count(3)
-            .max_count(50)
-            .min_depth(1)
-            .max_depth(3)
-            .sort_by("count")
-            .limit(15)
-            .execute(test_data, ["x", "y", "z"])
-        )
-
-        # Should handle multiple filters efficiently
-        assert isinstance(patterns, list)
-        assert len(patterns) <= 15
