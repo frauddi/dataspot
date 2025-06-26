@@ -5,6 +5,7 @@ including edge cases and various email formats.
 """
 
 from dataspot import Dataspot
+from dataspot.analyzers.base import Base
 
 
 class TestEmailPreprocessing:
@@ -13,6 +14,7 @@ class TestEmailPreprocessing:
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.dataspot = Dataspot()
+        self.base = Base()
 
     def test_basic_email_extraction(self):
         """Test basic email pattern extraction."""
@@ -41,7 +43,7 @@ class TestEmailPreprocessing:
 
         for email, expected in test_cases:
             test_record = {"email": email}
-            processed = self.dataspot._preprocess_value("email", email, test_record)
+            processed = self.base._preprocess_value("email", email, test_record)
             assert processed == expected, f"Failed for email: {email}"
 
     def test_emails_with_no_alphabetic_characters(self):
@@ -56,7 +58,7 @@ class TestEmailPreprocessing:
 
         for email, expected in test_cases:
             test_record = {"email": email}
-            processed = self.dataspot._preprocess_value("email", email, test_record)
+            processed = self.base._preprocess_value("email", email, test_record)
             assert processed == expected, f"Failed for email: {email}"
 
         # When email preprocessing returns empty lists, no paths are generated at all
@@ -90,7 +92,7 @@ class TestEmailPreprocessing:
 
         for email, expected in test_cases:
             test_record = {"email": email}
-            processed = self.dataspot._preprocess_value("email", email, test_record)
+            processed = self.base._preprocess_value("email", email, test_record)
             assert processed == expected, f"Failed for malformed email: {email}"
 
     def test_email_pattern_field(self):
@@ -115,7 +117,7 @@ class TestEmailPreprocessing:
         }
 
         # When processing email_pattern field but email field exists, use email field
-        processed = self.dataspot._preprocess_value(
+        processed = self.base._preprocess_value(
             "email_pattern", "fake.pattern@domain.com", test_record
         )
 
@@ -136,7 +138,7 @@ class TestEmailPreprocessing:
 
         for email, expected in test_cases:
             test_record = {"email": email}
-            processed = self.dataspot._preprocess_value("email", email, test_record)
+            processed = self.base._preprocess_value("email", email, test_record)
             assert processed == expected, f"Failed for email: {email}"
 
     def test_unicode_emails(self):
@@ -150,15 +152,13 @@ class TestEmailPreprocessing:
 
         for email, expected in test_cases:
             test_record = {"email": email}
-            processed = self.dataspot._preprocess_value("email", email, test_record)
+            processed = self.base._preprocess_value("email", email, test_record)
             assert processed == expected, f"Failed for Unicode email: {email}"
 
     def test_non_email_fields_not_processed(self):
         """Test that non-email fields are not preprocessed as emails."""
         test_record = {"text": "user@domain.com"}
-        processed = self.dataspot._preprocess_value(
-            "text", "user@domain.com", test_record
-        )
+        processed = self.base._preprocess_value("text", "user@domain.com", test_record)
 
         # Should return the value as-is, not preprocessed as email
         assert processed == "user@domain.com"
@@ -169,12 +169,10 @@ class TestEmailPreprocessing:
         def custom_email_processor(value):
             return f"custom_{value}"
 
-        self.dataspot.add_preprocessor("email", custom_email_processor)
+        self.base.add_preprocessor("email", custom_email_processor)
 
         test_record = {"email": "test@domain.com"}
-        processed = self.dataspot._preprocess_value(
-            "email", "test@domain.com", test_record
-        )
+        processed = self.base._preprocess_value("email", "test@domain.com", test_record)
 
         # Should use custom preprocessor instead of email preprocessing
         assert processed == "custom_test@domain.com"
@@ -190,56 +188,72 @@ class TestEmailPreprocessing:
 
         for value, expected in test_cases:
             test_record = {"email": value}
-            processed = self.dataspot._preprocess_value("email", value, test_record)
+            processed = self.base._preprocess_value("email", value, test_record)
             assert processed == expected, f"Failed for value: {value}"
 
 
-class TestEmailFieldConfiguration:
-    """Test cases for email field configuration."""
+class TestEmailPreprocessorConfiguration:
+    """Test cases for email preprocessor configuration using the new API."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.dataspot = Dataspot()
+        self.base = Base()
 
-    def test_default_email_fields(self):
-        """Test that default email fields are correctly configured."""
-        expected_defaults = ["email", "email_pattern"]
-        assert set(self.dataspot.email_patterns) == set(expected_defaults)
+    def test_default_email_preprocessing(self):
+        """Test that default email fields are correctly preprocessed."""
+        # Test that 'email' field gets preprocessed by default
+        test_record = {"email": "test.user@domain.com"}
+        processed = self.base._preprocess_value(
+            "email", "test.user@domain.com", test_record
+        )
+        assert processed == ["test", "user"]
 
-    def test_modify_email_fields(self):
-        """Test modifying email field configuration."""
-        # Add custom email field
-        self.dataspot.email_patterns.append("contact_email")
+        # Test that 'email_pattern' field gets preprocessed by default
+        test_record = {"email_pattern": "admin.support@domain.com"}
+        processed = self.base._preprocess_value(
+            "email_pattern", "admin.support@domain.com", test_record
+        )
+        assert processed == ["admin", "support"]
+
+    def test_add_custom_email_field(self):
+        """Test adding custom email field using preprocessor API."""
+        from dataspot.analyzers.preprocessors import email_preprocessor
+
+        # Add custom email field using the preprocessor API
+        self.base.add_preprocessor("contact_email", email_preprocessor)
 
         test_record = {"contact_email": "contact.support@domain.com"}
-        processed = self.dataspot._preprocess_value(
+        processed = self.base._preprocess_value(
             "contact_email", "contact.support@domain.com", test_record
         )
 
         # Should apply email preprocessing to custom field
         assert processed == ["contact", "support"]
 
-    def test_remove_email_field(self):
-        """Test removing email field from configuration."""
-        # Remove 'email' from email patterns
-        self.dataspot.email_patterns = ["email_pattern"]  # Remove 'email'
+    def test_override_default_email_field(self):
+        """Test overriding default email field behavior."""
+
+        # Override the default email preprocessor with a custom one
+        def custom_email_processor(value):
+            return f"custom_{value}"
+
+        self.base.add_preprocessor("email", custom_email_processor)
 
         test_record = {"email": "test.user@domain.com"}
-        processed = self.dataspot._preprocess_value(
+        processed = self.base._preprocess_value(
             "email", "test.user@domain.com", test_record
         )
 
-        # Should NOT apply email preprocessing
-        assert processed == "test.user@domain.com"
+        # Should use custom preprocessor instead of default email preprocessing
+        assert processed == "custom_test.user@domain.com"
 
-    def test_empty_email_fields_list(self):
-        """Test behavior with empty email fields list."""
-        # Clear all email patterns
-        self.dataspot.email_patterns = []
-
-        test_record = {"email": "test.user@domain.com"}
-        processed = self.dataspot._preprocess_value(
-            "email", "test.user@domain.com", test_record
+    def test_non_email_field_not_preprocessed(self):
+        """Test that fields without email preprocessor are not processed as emails."""
+        # Custom field without email preprocessor should not be processed as email
+        test_record = {"custom_field": "test.user@domain.com"}
+        processed = self.base._preprocess_value(
+            "custom_field", "test.user@domain.com", test_record
         )
 
         # Should NOT apply email preprocessing

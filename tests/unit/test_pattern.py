@@ -9,7 +9,7 @@ import pytest
 from dataspot.core import Pattern
 
 
-class TestPatternClass:
+class TestPattern:
     """Test cases for the Pattern dataclass."""
 
     def test_pattern_creation_basic(self):

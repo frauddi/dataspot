@@ -114,6 +114,48 @@ Complete use cases based on real business problems:
 python 06_real_world_scenarios.py
 ```
 
+### 7. `07_tree_visualization.py`
+
+#### Tree Visualization
+
+Demonstrates the tree() method for hierarchical data structures:
+
+- JSON tree output for dashboards
+- Filtering tree nodes
+- Performance with large datasets
+- Integration with visualization tools
+
+**Use cases:** Dashboard creation, hierarchical visualization, web applications.
+
+```bash
+python 07_tree_visualization.py
+```
+
+### 8. `08_auto_discovery.py` ✨ **NEW!**
+
+#### Automatic Pattern Discovery
+
+Shows how to automatically discover concentration patterns without specifying fields:
+
+- **Basic auto-discovery**: Finds patterns automatically
+- **Fraud detection**: High-threshold discovery for suspicious patterns
+- **Business intelligence**: Multi-field pattern discovery
+- **Manual vs Auto comparison**: Shows improvement over manual analysis
+- **Performance benchmarks**: Scaling across dataset sizes
+
+**Key features:**
+
+- **Smart field detection**: Automatically identifies categorical fields
+- **Field ranking**: Scores fields by concentration potential
+- **Intelligent combinations**: Only tries promising field combinations
+- **Actionable recommendations**: Provides insights and next steps
+
+**Use cases:** Exploratory data analysis, fraud detection, business intelligence, data quality assessment.
+
+```bash
+python 08_auto_discovery.py
+```
+
 ## How to Run the Examples
 
 ### Prerequisites
@@ -147,6 +189,7 @@ python 04_advanced_filtering.py
 python 05_data_quality_and_edge_cases.py
 python 06_real_world_scenarios.py
 python 07_tree_visualization.py
+python 08_auto_discovery.py
 ```
 
 ### Run All Examples
@@ -175,6 +218,7 @@ Each example corresponds to specific test cases:
 | `05_data_quality_and_edge_cases.py` | Special cases from all tests |
 | `06_real_world_scenarios.py` | Practical applications |
 | `07_tree_visualization.py` | Tree method functionality |
+| `08_auto_discovery.py` | ✨ **NEW!** Auto-discovery method functionality |
 
 ## Available Filtering Parameters
 

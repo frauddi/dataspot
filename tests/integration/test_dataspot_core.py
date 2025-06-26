@@ -4,6 +4,7 @@ This module tests the main pattern detection and concentration analysis features
 """
 
 from dataspot import Dataspot
+from dataspot.analyzers.base import Base
 
 
 class TestDataspotCore:
@@ -358,6 +359,7 @@ class TestTreeBuilding:
     def setup_method(self):
         """Set up test fixtures."""
         self.dataspot = Dataspot()
+        self.base = Base()
 
     def test_tree_structure_integrity(self):
         """Test that the internal tree structure is built correctly."""
@@ -367,7 +369,7 @@ class TestTreeBuilding:
         ]
 
         # Access internal tree building method
-        tree = self.dataspot._build_tree(data, ["a", "b"])
+        tree = self.base._build_tree(data, ["a", "b"])
 
         # Check tree structure
         assert "children" in tree
@@ -387,7 +389,7 @@ class TestTreeBuilding:
         """Test that record paths are generated correctly."""
         data = [{"x": "val1", "y": "val2"}]
 
-        paths = self.dataspot._get_record_paths(data[0], ["x", "y"])
+        paths = self.base._get_record_paths(data[0], ["x", "y"])
 
         assert len(paths) == 1
         assert paths[0] == ["x=val1", "y=val2"]
@@ -398,10 +400,11 @@ class TestTreeBuilding:
         path = ["a=1", "b=2"]
         test_record = {"a": 1, "b": 2}
 
-        self.dataspot._add_path_to_tree(path, tree, total=1, record=test_record)
+        self.base._add_path_to_tree(path, tree, total=1, record=test_record)
 
         # Check that path was added correctly
         assert "a=1" in tree["children"]
+
         a1_node = tree["children"]["a=1"]
         assert a1_node["count"] == 1
         assert a1_node["percentage"] == 100.0
@@ -410,6 +413,7 @@ class TestTreeBuilding:
         assert a1_node["samples"][0] == test_record
 
         assert "b=2" in a1_node["children"]
+
         b2_node = a1_node["children"]["b=2"]
         assert b2_node["count"] == 1
         assert b2_node["percentage"] == 100.0
