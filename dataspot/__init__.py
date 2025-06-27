@@ -1,6 +1,6 @@
 """Dataspot - Find data concentration patterns and dataspots."""
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 __author__ = "Elio Rincón"
 __email__ = "elio@frauddi.com"
 __maintainer__ = "Frauddi Team"
@@ -17,9 +17,6 @@ from dataspot.exceptions import (
     ValidationError,
 )
 from dataspot.models import Pattern
-
-# from .query import QueryBuilder  # Will add when we create it
-# from .utils import quick_analysis, find_concentrations, top_patterns  # Will add when we create it
 
 
 # Quick functions for easy usage
@@ -47,6 +44,12 @@ def discover(data, **kwargs):
     return dataspot.discover(data, **kwargs)
 
 
+def compare(current_data, baseline_data, fields, **kwargs):
+    """Quick function to compare data."""
+    dataspot = Dataspot()
+    return dataspot.compare(current_data, baseline_data, fields, **kwargs)
+
+
 # Package metadata
 __all__ = [
     # Main classes
@@ -57,6 +60,7 @@ __all__ = [
     "analyze",
     "tree",
     "discover",
+    "compare",
     # Exceptions
     "DataspotError",
     "ValidationError",
