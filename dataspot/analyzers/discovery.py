@@ -35,7 +35,7 @@ class Discovery(Base):
             **kwargs: Additional filtering options
 
         Returns:
-            Dictionary with discovered patterns, field analysis, and recommendations
+            Dictionary with discovered patterns and field analysis.
 
         """
         self._validate_data(data)
@@ -67,9 +67,6 @@ class Discovery(Base):
             "statistics": self._calculate_discovery_statistics(
                 data, available_fields, combinations_tried, top_patterns
             ),
-            "recommendations": self._generate_actionable_recommendations(
-                top_patterns, field_scores
-            ),
         }
 
     def _build_empty_discovery_result(self) -> Dict[str, Any]:
@@ -78,8 +75,13 @@ class Discovery(Base):
             "top_patterns": [],
             "field_ranking": [],
             "combinations_tried": [],
-            "statistics": {"total_records": 0, "fields_analyzed": 0},
-            "recommendations": {"message": "No data provided", "suggestions": []},
+            "statistics": {
+                "total_records": 0,
+                "fields_analyzed": 0,
+                "combinations_tried": 0,
+                "patterns_discovered": 0,
+                "best_concentration": 0,
+            },
         }
 
     def _detect_categorical_fields(self, data: List[Dict[str, Any]]) -> List[str]:
@@ -311,57 +313,4 @@ class Discovery(Base):
             "best_concentration": max([p.percentage for p in top_patterns])
             if top_patterns
             else 0,
-        }
-
-    def _generate_actionable_recommendations(
-        self, patterns: List[Pattern], field_scores: List[Tuple[str, float]]
-    ) -> Dict[str, Any]:
-        """Generate actionable recommendations based on discovery results.
-
-        Args:
-            patterns: Discovered patterns
-            field_scores: Field scoring results
-
-        Returns:
-            Recommendations dictionary
-
-        """
-        if not patterns:
-            return {"message": "No significant patterns found", "suggestions": []}
-
-        top_pattern = patterns[0]
-        recommendations = []
-
-        # Pattern-based recommendations
-        if top_pattern.percentage > 50:
-            recommendations.append(
-                {
-                    "type": "high_concentration",
-                    "message": f"Very high concentration found: {top_pattern.path} ({top_pattern.percentage}%)",
-                    "action": "Investigate this pattern - could indicate data quality issues or important business insight",
-                }
-            )
-        elif top_pattern.percentage > 30:
-            recommendations.append(
-                {
-                    "type": "significant_concentration",
-                    "message": f"Significant concentration: {top_pattern.path} ({top_pattern.percentage}%)",
-                    "action": "This pattern represents a key segment in your data",
-                }
-            )
-
-        # Field-based recommendations
-        if field_scores:
-            best_field = field_scores[0][0]
-            recommendations.append(
-                {
-                    "type": "best_field",
-                    "message": f"Most valuable field for analysis: '{best_field}'",
-                    "action": f"Focus deeper analysis on '{best_field}' and its combinations",
-                }
-            )
-
-        return {
-            "summary": f"Found {len(patterns)} patterns, best concentration: {top_pattern.percentage}%",
-            "recommendations": recommendations,
         }
