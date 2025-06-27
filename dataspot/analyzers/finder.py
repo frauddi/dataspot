@@ -47,5 +47,6 @@ class Finder(Base):
         tree = self._build_tree(filtered_data, fields)
 
         patterns = PatternExtractor.from_tree(tree, len(filtered_data))
+        filtered_patterns = PatternFilter(patterns).apply_all(**kwargs)
 
-        return PatternFilter(patterns).apply_all(**kwargs)
+        return filtered_patterns

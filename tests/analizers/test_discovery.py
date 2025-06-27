@@ -1,7 +1,7 @@
 """Unit tests for the Discovery class.
 
 This module tests the Discovery class in isolation, focusing on automatic
-pattern discovery, field analysis, and intelligent recommendation generation.
+pattern discovery, field analysis.
 """
 
 from typing import List
@@ -66,7 +66,6 @@ class TestDiscoveryExecute:
         assert "field_ranking" in result
         assert "combinations_tried" in result
         assert "statistics" in result
-        assert "recommendations" in result
 
     @patch("dataspot.analyzers.discovery.Finder")
     def test_execute_with_parameters(self, mock_finder_class):
@@ -104,7 +103,6 @@ class TestDiscoveryExecute:
         assert result["field_ranking"] == []
         assert result["combinations_tried"] == []
         assert result["statistics"]["total_records"] == 0
-        assert "No data provided" in result["recommendations"]["message"]
 
     def test_execute_with_invalid_data(self):
         """Test execute with invalid data."""
@@ -377,95 +375,6 @@ class TestDiscoveryStatistics:
         assert stats["best_concentration"] == 0
 
 
-class TestDiscoveryRecommendations:
-    """Test cases for recommendation generation."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.discovery = Discovery()
-
-    def test_generate_recommendations_no_patterns(self):
-        """Test recommendation generation with no patterns."""
-        recommendations = self.discovery._generate_actionable_recommendations([], [])
-
-        assert "No significant patterns found" in recommendations["message"]
-        assert recommendations["suggestions"] == []
-
-    def test_generate_recommendations_high_concentration(self):
-        """Test recommendations for high concentration patterns."""
-        pattern = Mock(spec=Pattern)
-        pattern.percentage = 75.0
-        pattern.path = "country=US"
-
-        field_scores = [("country", 20.0)]
-        recommendations = self.discovery._generate_actionable_recommendations(
-            [pattern], field_scores
-        )
-
-        assert "recommendations" in recommendations
-        assert any(
-            "high_concentration" in rec["type"]
-            for rec in recommendations["recommendations"]
-        )
-        assert any(
-            "Investigate this pattern" in rec["action"]
-            for rec in recommendations["recommendations"]
-        )
-
-    def test_generate_recommendations_significant_concentration(self):
-        """Test recommendations for significant concentration patterns."""
-        pattern = Mock(spec=Pattern)
-        pattern.percentage = 45.0
-        pattern.path = "device=mobile"
-
-        field_scores = [("device", 15.0)]
-        recommendations = self.discovery._generate_actionable_recommendations(
-            [pattern], field_scores
-        )
-
-        assert any(
-            "significant_concentration" in rec["type"]
-            for rec in recommendations["recommendations"]
-        )
-        assert any(
-            "key segment" in rec["action"] for rec in recommendations["recommendations"]
-        )
-
-    def test_generate_recommendations_best_field(self):
-        """Test recommendations for best field identification."""
-        pattern = Mock(spec=Pattern)
-        pattern.percentage = 35.0
-        pattern.path = "category=premium"
-
-        field_scores = [("category", 25.0), ("status", 15.0)]
-        recommendations = self.discovery._generate_actionable_recommendations(
-            [pattern], field_scores
-        )
-
-        # Should identify best field
-        assert any(
-            "best_field" in rec["type"] for rec in recommendations["recommendations"]
-        )
-        assert any(
-            "category" in rec["message"] for rec in recommendations["recommendations"]
-        )
-
-    def test_generate_recommendations_summary(self):
-        """Test recommendation summary generation."""
-        patterns: List[Pattern] = [Mock(spec=Pattern) for _ in range(3)]
-        patterns[0].percentage = 65.0
-        patterns[0].path = "test=value"
-
-        field_scores = [("field1", 20.0)]
-        recommendations = self.discovery._generate_actionable_recommendations(
-            patterns, field_scores
-        )
-
-        assert "summary" in recommendations
-        assert "Found 3 patterns" in recommendations["summary"]
-        assert "65.0%" in recommendations["summary"]
-
-
 class TestDiscoveryIntegration:
     """Test cases for integration and end-to-end functionality."""
 
@@ -512,8 +421,6 @@ class TestDiscoveryIntegration:
         assert len(result["combinations_tried"]) > 0
         assert result["statistics"]["total_records"] == 100
         assert result["statistics"]["fields_analyzed"] > 0
-        assert "recommendations" in result
-        assert "summary" in result["recommendations"]
 
 
 class TestDiscoveryEdgeCases:
@@ -531,7 +438,6 @@ class TestDiscoveryEdgeCases:
         assert result["field_ranking"] == []
         assert result["combinations_tried"] == []
         assert result["statistics"]["total_records"] == 0
-        assert "No data provided" in result["recommendations"]["message"]
 
     @patch("dataspot.analyzers.discovery.Finder")
     def test_discovery_with_problematic_fields(self, mock_finder_class):

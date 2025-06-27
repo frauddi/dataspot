@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Dict, List, Optional
 
-from .analyzers import Analyzer, Base, Discovery, Finder, Tree
+from .analyzers import Analyzer, Base, Compare, Discovery, Finder, Tree
 from .models import Pattern
 
 
@@ -154,7 +154,7 @@ class Dataspot:
             **kwargs: Additional filtering options (same as find method)
 
         Returns:
-            Dictionary with discovered patterns, field analysis, and recommendations
+            Dictionary with discovered patterns and field analysis.
 
         Example:
             results = dataspot.discover(data)
@@ -166,4 +166,52 @@ class Dataspot:
         discovery.preprocessors = self._base.preprocessors
         return discovery.execute(
             data, max_fields, max_combinations, min_concentration, query, **kwargs
+        )
+
+    def compare(
+        self,
+        current_data: List[Dict[str, Any]],
+        baseline_data: List[Dict[str, Any]],
+        fields: List[str],
+        statistical_significance: bool = False,
+        change_threshold: float = 0.15,
+        query: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Compare datasets to detect changes and anomalies between periods.
+
+        Args:
+            current_data: Current period data
+            baseline_data: Baseline period data for comparison
+            fields: List of field names to analyze for changes
+            statistical_significance: Calculate p-values and confidence intervals (default: False)
+            change_threshold: Threshold for significant changes, 0.15 = 15% (default: 0.15)
+            query: Optional filters to apply to both datasets
+            **kwargs: Additional filtering options (same as find method)
+
+        Returns:
+            Dictionary with comprehensive comparison results and changes.
+
+        Example:
+            # Fraud detection comparison
+            changes = dataspot.compare(
+                current_data=this_month_transactions,
+                baseline_data=last_month_transactions,
+                fields=["country", "payment_method"],
+                statistical_significance=True,
+                change_threshold=0.25,
+                query={"country": ["US", "EU"]},
+            )
+
+        """
+        compare = Compare()
+        compare.preprocessors = self._base.preprocessors
+        return compare.execute(
+            current_data=current_data,
+            baseline_data=baseline_data,
+            fields=fields,
+            statistical_significance=statistical_significance,
+            change_threshold=change_threshold,
+            query=query,
+            **kwargs,
         )

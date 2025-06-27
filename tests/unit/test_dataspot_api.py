@@ -305,7 +305,6 @@ class TestDataspotDiscover:
             "field_ranking": [("country", 15.0), ("device", 12.0)],
             "combinations_tried": [],
             "statistics": {"total_records": 3, "fields_analyzed": 3},
-            "recommendations": {"summary": "Found 0 patterns"},
         }
 
         mock_discovery = Mock()
@@ -323,7 +322,6 @@ class TestDataspotDiscover:
         assert result == mock_result
         assert "top_patterns" in result
         assert "field_ranking" in result
-        assert "recommendations" in result
 
     @patch("dataspot.core.Discovery")
     def test_discover_with_parameters(self, mock_discovery_class):
@@ -584,9 +582,6 @@ class TestDataspotDocumentationExamples:
         mock_result = {
             "top_patterns": [mock_pattern],
             "field_ranking": [("country", 20.0), ("device", 15.0)],
-            "recommendations": {
-                "summary": "Found 1 patterns, best concentration: 60.0%"
-            },
         }
 
         mock_discovery = Mock()

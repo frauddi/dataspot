@@ -148,12 +148,55 @@ Shows how to automatically discover concentration patterns without specifying fi
 - **Smart field detection**: Automatically identifies categorical fields
 - **Field ranking**: Scores fields by concentration potential
 - **Intelligent combinations**: Only tries promising field combinations
-- **Actionable recommendations**: Provides insights and next steps
 
 **Use cases:** Exploratory data analysis, fraud detection, business intelligence, data quality assessment.
 
+### 9. `09_temporal_comparison.py`
+
+#### Temporal Comparison
+
+Compares patterns from different time periods to detect changes and anomalies:
+
+- **Context-aware analysis**: Fraud detection, business intelligence, data quality, A/B testing
+- **Statistical significance**: P-values, confidence intervals, effect sizes
+- **Change detection**: Intelligent thresholds and severity levels
+
+**Key features:**
+
+- **Advanced analytics**: Chi-square tests, statistical significance testing
+- **Context intelligence**: Different analysis modes for different use cases
+- **Change categorization**: Stable, new, disappeared, increased, decreased patterns
+
+**Use cases:** Fraud monitoring, business performance tracking, A/B test analysis, data quality monitoring.
+
 ```bash
-python 08_auto_discovery.py
+python 09_temporal_comparison.py
+```
+
+### 10. `10_stats.py`
+
+#### Statistical Analysis
+
+Demonstrates advanced statistical methods and calculations used in data analysis:
+
+- **Statistical significance testing**: Chi-square tests, p-values, confidence intervals
+- **Effect size calculations**: Cohen's d approximation for practical significance
+- **Comprehensive analysis**: Complete statistical workflow with interpretations
+- **Business applications**: A/B testing, fraud detection, performance monitoring
+- **Educational examples**: Step-by-step explanations of statistical concepts
+
+**Key features:**
+
+- **Mathematical foundations**: Complete formulas and theoretical background
+- **Practical examples**: Real-world scenarios with business interpretations
+- **Decision frameworks**: Guidelines for statistical significance determination
+- **Performance analysis**: Scaling considerations for large datasets
+- **Literature references**: Academic sources for further reading
+
+**Use cases:** A/B testing validation, fraud detection confidence, business metrics analysis, data quality assessment.
+
+```bash
+python 10_stats.py
 ```
 
 ## How to Run the Examples
@@ -190,6 +233,8 @@ python 05_data_quality_and_edge_cases.py
 python 06_real_world_scenarios.py
 python 07_tree_visualization.py
 python 08_auto_discovery.py
+python 09_temporal_comparison.py
+python 10_stats.py
 ```
 
 ### Run All Examples
@@ -219,6 +264,8 @@ Each example corresponds to specific test cases:
 | `06_real_world_scenarios.py` | Practical applications |
 | `07_tree_visualization.py` | Tree method functionality |
 | `08_auto_discovery.py` | ✨ **NEW!** Auto-discovery method functionality |
+| `09_temporal_comparison.py` | Temporal comparison functionality |
+| `10_stats.py` | Statistical analysis functionality |
 
 ## Available Filtering Parameters
 

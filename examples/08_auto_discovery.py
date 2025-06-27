@@ -218,13 +218,6 @@ def targeted_fraud_discovery():
     else:
         print("   ✅ No highly suspicious patterns detected")
 
-    # Show recommendations
-    print("\n💡 Security Recommendations:")
-    for rec in fraud_results["recommendations"]["recommendations"]:
-        print(f"   • {rec['message']}")
-        if "action" in rec:
-            print(f"     → {rec['action']}")
-
 
 def business_intelligence_discovery():
     """Generate business intelligence insights."""
