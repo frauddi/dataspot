@@ -64,6 +64,7 @@ class Analyzer(Base):
             },
             "field_stats": field_stats,
             "top_patterns": patterns[:5] if patterns else [],
+            "fields_analyzed": fields,
         }
 
     def _calculate_statistics(

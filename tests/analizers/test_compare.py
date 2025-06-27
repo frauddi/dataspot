@@ -1,8 +1,4 @@
-"""Unit tests for the Compare class.
-
-This module tests the Compare class focusing on temporal/segmental data comparison
-with emphasis on uppercase status and type values consistency.
-"""
+"""Tests for Compare analyzer functionality."""
 
 import pytest
 
@@ -65,13 +61,14 @@ class TestCompareExecute:
 
         # Check result structure
         assert "changes" in result
-        assert "current_total" in result
-        assert "baseline_total" in result
+        assert "statistics" in result
+        assert "current_total" in result["statistics"]
+        assert "baseline_total" in result["statistics"]
         assert "fields_analyzed" in result
         assert "statistical_significance" in result
 
-        assert result["current_total"] == len(self.current_data)
-        assert result["baseline_total"] == len(self.baseline_data)
+        assert result["statistics"]["current_total"] == len(self.current_data)
+        assert result["statistics"]["baseline_total"] == len(self.baseline_data)
         assert result["fields_analyzed"] == ["transaction_type", "country"]
 
     def test_execute_with_invalid_data(self):
@@ -98,7 +95,7 @@ class TestCompareExecute:
             fields=["transaction_type"],
         )
 
-        assert result["current_total"] == 0
+        assert result["statistics"]["current_total"] == 0
         assert len(result["changes"]) >= 0
 
     def test_execute_with_query(self):

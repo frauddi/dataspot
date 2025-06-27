@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
+from ..models import Pattern
 from .base import Base
 from .stats import Stats
 
@@ -66,8 +67,12 @@ class Compare(Base):
         result = {
             "changes": changes,
             **categorized_patterns,
-            "current_total": len(current_data),
-            "baseline_total": len(baseline_data),
+            "statistics": {
+                "current_total": len(current_data),
+                "baseline_total": len(baseline_data),
+                "patterns_compared": len(changes),
+                "significant_changes": len([c for c in changes if c["is_significant"]]),
+            },
             "fields_analyzed": fields,
             "change_threshold": change_threshold,
             "statistical_significance": statistical_significance,
@@ -84,7 +89,7 @@ class Compare(Base):
         finder = Finder()
         finder.preprocessors = self.preprocessors
 
-        patterns = finder.execute(data, fields, **kwargs)
+        patterns: List[Pattern] = finder.execute(data, fields, **kwargs)
 
         # Convert to dictionary for easier comparison
         pattern_dict = {}

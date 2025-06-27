@@ -67,6 +67,7 @@ class Discovery(Base):
             "statistics": self._calculate_discovery_statistics(
                 data, available_fields, combinations_tried, top_patterns
             ),
+            "fields_analyzed": available_fields,
         }
 
     def _build_empty_discovery_result(self) -> Dict[str, Any]:
@@ -82,6 +83,7 @@ class Discovery(Base):
                 "patterns_discovered": 0,
                 "best_concentration": 0,
             },
+            "fields_analyzed": [],
         }
 
     def _detect_categorical_fields(self, data: List[Dict[str, Any]]) -> List[str]:

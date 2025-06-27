@@ -42,7 +42,14 @@ class Tree(Base):
         # Get top parameter and build empty tree if no data
         top = kwargs.get("top", 5)
         if not filtered_data:
-            return self._build_empty_tree(top)
+            empty_tree = self._build_empty_tree(top)
+            empty_tree["statistics"] = {
+                "total_records": len(data),
+                "filtered_records": 0,
+                "patterns_found": 0,
+            }
+            empty_tree["fields_analyzed"] = fields
+            return empty_tree
 
         # Build internal tree structure
         internal_tree = self._build_tree(filtered_data, fields)
@@ -56,7 +63,18 @@ class Tree(Base):
         filtered_patterns = PatternFilter(all_patterns).apply_all(**filter_kwargs)
 
         # Build and return clean JSON tree
-        return TreeBuilder(filtered_patterns, total_records, top).build()
+        tree_result = TreeBuilder(filtered_patterns, total_records, top).build()
+
+        # Add consistent statistics
+        tree_result["statistics"] = {
+            "total_records": len(data),
+            "filtered_records": len(filtered_data),
+            "patterns_found": len(filtered_patterns),
+            "fields_analyzed": len(fields),
+        }
+        tree_result["fields_analyzed"] = fields
+
+        return tree_result
 
     def _build_empty_tree(self, top: int) -> Dict[str, Any]:
         """Build empty tree structure for cases with no data.
