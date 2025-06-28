@@ -64,7 +64,7 @@ See Also:
 """
 
 from itertools import combinations
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..models.discovery import (
     CombinationTried,
@@ -178,7 +178,7 @@ class Discovery(Base):
     def execute(
         self,
         input: DiscoverInput,
-        options: DiscoverOptions,
+        options: Optional[DiscoverOptions] = None,
     ) -> DiscoverOutput:
         r"""Execute comprehensive automatic pattern discovery across all available fields.
 
@@ -306,6 +306,9 @@ class Discovery(Base):
             - Suitable for real-time discovery in streaming data environments
 
         """
+        if options is None:
+            options = DiscoverOptions()
+
         self._validate_data(input.data)
 
         data = input.data

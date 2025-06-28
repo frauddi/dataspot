@@ -74,7 +74,7 @@ See Also:
 
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..models.compare import (
     ChangeItem,
@@ -182,7 +182,7 @@ class Compare(Base):
     def execute(
         self,
         input: CompareInput,
-        options: CompareOptions,
+        options: Optional[CompareOptions] = None,
     ) -> CompareOutput:
         r"""Execute comprehensive temporal comparison analysis between datasets.
 
@@ -313,6 +313,9 @@ class Compare(Base):
             - Processing time scales with the number of unique patterns in both datasets
 
         """
+        if options is None:
+            options = CompareOptions()
+
         # Validate input data
         self._validate_data(input.current_data)
         self._validate_data(input.baseline_data)

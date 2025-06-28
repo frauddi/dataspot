@@ -61,7 +61,7 @@ See Also:
 
 """
 
-from typing import List
+from typing import List, Optional
 
 from ..models.finder import FindInput, FindOptions, FindOutput
 from ..models.pattern import Pattern
@@ -159,7 +159,7 @@ class Finder(Base):
     def execute(
         self,
         input: FindInput,
-        options: FindOptions,
+        options: Optional[FindOptions] = None,
     ) -> FindOutput:
         r"""Execute core pattern finding analysis on structured data.
 
@@ -324,6 +324,9 @@ class Finder(Base):
             - Memory usage is optimized for large datasets through streaming processing
 
         """
+        if options is None:
+            options = FindOptions()
+
         self._validate_data(input.data)
 
         if not input.fields:

@@ -1,195 +1,67 @@
 """Basic Query Filtering Examples.
 
-This module demonstrates how to filter data using queries before pattern analysis.
-Query filtering reduces the dataset to only the records that match your criteria.
+Demonstrates filtering data before analysis using queries.
 """
 
 from dataspot import Dataspot
+from dataspot.models.finder import FindInput, FindOptions
+from dataspot.models.tree import TreeInput, TreeOptions
 
-# Sample e-commerce transaction data
-ecommerce_data = [
-    {
-        "country": "US",
-        "device": "mobile",
-        "user_type": "premium",
-        "amount": 100,
-        "category": "electronics",
-    },
-    {
-        "country": "US",
-        "device": "mobile",
-        "user_type": "premium",
-        "amount": 200,
-        "category": "books",
-    },
-    {
-        "country": "US",
-        "device": "desktop",
-        "user_type": "free",
-        "amount": 50,
-        "category": "electronics",
-    },
-    {
-        "country": "EU",
-        "device": "mobile",
-        "user_type": "free",
-        "amount": 75,
-        "category": "clothing",
-    },
-    {
-        "country": "EU",
-        "device": "tablet",
-        "user_type": "premium",
-        "amount": 150,
-        "category": "electronics",
-    },
-    {
-        "country": "CA",
-        "device": "mobile",
-        "user_type": "premium",
-        "amount": 120,
-        "category": "books",
-    },
-    {
-        "country": "US",
-        "device": "mobile",
-        "user_type": "free",
-        "amount": 80,
-        "category": "clothing",
-    },
-    {
-        "country": "EU",
-        "device": "desktop",
-        "user_type": "premium",
-        "amount": 180,
-        "category": "electronics",
-    },
+# Simple e-commerce data
+data = [
+    {"country": "US", "device": "mobile", "user_type": "premium"},
+    {"country": "US", "device": "mobile", "user_type": "free"},
+    {"country": "US", "device": "desktop", "user_type": "free"},
+    {"country": "EU", "device": "mobile", "user_type": "premium"},
+    {"country": "EU", "device": "tablet", "user_type": "premium"},
+    {"country": "CA", "device": "mobile", "user_type": "free"},
 ]
 
 
-def example_single_field_query():
-    """Filter by single field - analyze only US transactions."""
-    print("=== Single Field Query Example ===")
-    print("Analyzing only US transactions...")
-
+def main():
+    """Query filtering examples."""
     dataspot = Dataspot()
-    query = {"country": "US"}
-    patterns = dataspot.find(
-        ecommerce_data, ["country", "device", "user_type"], query=query
+
+    print("=== 1. Basic Query Filtering ===")
+
+    # All patterns
+    input_data = FindInput(data=data, fields=["country", "device"])
+    result = dataspot.find(input_data, FindOptions())
+    print(f"All patterns: {len(result.patterns)}")
+
+    # Single field filter
+    input_us = FindInput(
+        data=data, fields=["country", "device"], query={"country": "US"}
     )
+    result_us = dataspot.find(input_us, FindOptions())
+    print(f"US only: {len(result_us.patterns)}")
 
-    print(f"Found {len(patterns)} patterns in US data:")
-    for pattern in patterns[:5]:  # Show top 5
-        print(f"  {pattern.path} - {pattern.count} records ({pattern.percentage:.1f}%)")
-    print()
-
-
-def example_multiple_field_query():
-    """Filter by multiple fields - US mobile users only."""
-    print("=== Multiple Field Query Example ===")
-    print("Analyzing US mobile users only...")
-
-    dataspot = Dataspot()
-    query = {"country": "US", "device": "mobile"}
-    patterns = dataspot.find(
-        ecommerce_data, ["country", "device", "user_type"], query=query
+    # Multiple fields filter
+    input_us_mobile = FindInput(
+        data=data,
+        fields=["country", "device"],
+        query={"country": "US", "device": "mobile"},
     )
+    result_us_mobile = dataspot.find(input_us_mobile, FindOptions())
+    print(f"US mobile: {len(result_us_mobile.patterns)}")
 
-    print(f"Found {len(patterns)} patterns in US mobile data:")
-    for pattern in patterns:
-        print(f"  {pattern.path} - {pattern.count} records ({pattern.percentage:.1f}%)")
-    print()
-
-
-def example_list_value_query():
-    """Filter by list of values - North American countries."""
-    print("=== List Value Query Example ===")
-    print("Analyzing North American countries (US and CA)...")
-
-    dataspot = Dataspot()
-    query = {"country": ["US", "CA"]}
-    patterns = dataspot.find(ecommerce_data, ["country", "device"], query=query)
-
-    print(f"Found {len(patterns)} patterns in North American data:")
-    for pattern in patterns:
-        print(f"  {pattern.path} - {pattern.count} records ({pattern.percentage:.1f}%)")
-    print()
-
-
-def example_mixed_query_types():
-    """Mix single values and lists - Premium users in US/EU on mobile/tablet."""
-    print("=== Mixed Query Types Example ===")
-    print("Analyzing premium users in US/EU using mobile or tablet...")
-
-    dataspot = Dataspot()
-    query = {
-        "country": ["US", "EU"],
-        "device": ["mobile", "tablet"],
-        "user_type": "premium",
-    }
-    patterns = dataspot.find(
-        ecommerce_data, ["country", "device", "user_type"], query=query
+    # List values filter
+    input_na = FindInput(
+        data=data, fields=["country", "device"], query={"country": ["US", "CA"]}
     )
+    result_na = dataspot.find(input_na, FindOptions())
+    print(f"North America: {len(result_na.patterns)}")
 
-    print(f"Found {len(patterns)} patterns in filtered data:")
-    for pattern in patterns:
-        print(f"  {pattern.path} - {pattern.count} records ({pattern.percentage:.1f}%)")
-    print()
+    print("\n=== 2. Tree with Query ===")
 
-
-def example_no_query_comparison():
-    """Compare results with and without query filtering."""
-    print("=== Comparison: With vs Without Query ===")
-
-    dataspot = Dataspot()
-
-    # Without query
-    all_patterns = dataspot.find(ecommerce_data, ["device", "user_type"])
-    print(f"Without query - Total patterns: {len(all_patterns)}")
-    print("Top 3 patterns:")
-    for pattern in all_patterns[:3]:
-        print(f"  {pattern.path} - {pattern.count} records ({pattern.percentage:.1f}%)")
-
-    # With query
-    query = {"country": "US"}
-    filtered_patterns = dataspot.find(
-        ecommerce_data, ["device", "user_type"], query=query
+    # Tree structure
+    tree_input = TreeInput(
+        data=data, fields=["country", "device"], query={"country": "US"}
     )
-    print(f"\nWith US query - Total patterns: {len(filtered_patterns)}")
-    print("Top 3 patterns:")
-    for pattern in filtered_patterns[:3]:
-        print(f"  {pattern.path} - {pattern.count} records ({pattern.percentage:.1f}%)")
-    print()
-
-
-def example_tree_with_query():
-    """Show how tree method works with query filtering."""
-    import json
-
-    print("=== Tree Structure with Query ===")
-    print("Using tree() method for hierarchical visualization")
-
-    dataspot = Dataspot()
-
-    # Tree without query
-    print("Complete tree structure:")
-    tree_all = dataspot.tree(ecommerce_data, ["country", "device"], top=3)
-    print(json.dumps(tree_all, indent=2))
-
-    # Tree with query
-    print("\nFiltered tree (US only):")
-    query = {"country": "US"}
-    tree_filtered = dataspot.tree(
-        ecommerce_data, ["device", "user_type"], query=query, top=3
-    )
-    print(json.dumps(tree_filtered, indent=2))
-    print()
+    tree = dataspot.tree(tree_input, TreeOptions())
+    print(f"Tree value: {tree.value} records")
+    print(f"Children: {len(tree.children)}")
 
 
 if __name__ == "__main__":
-    example_single_field_query()
-    example_multiple_field_query()
-    example_list_value_query()
-    example_mixed_query_types()
-    example_no_query_comparison()
-    example_tree_with_query()
+    main()

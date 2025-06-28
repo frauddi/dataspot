@@ -60,7 +60,7 @@ See Also:
 
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..models.tree import TreeInput, TreeNode, TreeOptions, TreeOutput, TreeStatistics
 from .base import Base
@@ -176,7 +176,7 @@ class Tree(Base):
     def execute(
         self,
         input: TreeInput,
-        options: TreeOptions,
+        options: Optional[TreeOptions] = None,
     ) -> TreeOutput:
         r"""Execute comprehensive hierarchical tree construction for visualization.
 
@@ -401,6 +401,9 @@ class Tree(Base):
             - Memory usage scales efficiently with data size and tree complexity
 
         """
+        if options is None:
+            options = TreeOptions()
+
         # Validate input
         self._validate_data(input.data)
 

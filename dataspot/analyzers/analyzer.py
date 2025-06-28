@@ -149,7 +149,7 @@ class Analyzer(Base):
     def execute(
         self,
         input: AnalyzeInput,
-        options: AnalyzeOptions,
+        options: Optional[AnalyzeOptions] = None,
     ) -> AnalyzeOutput:
         r"""Execute comprehensive data analysis with statistical insights and recommendations.
 
@@ -268,6 +268,9 @@ class Analyzer(Base):
             - Processing time scales linearly with data size and number of fields analyzed
 
         """
+        if options is None:
+            options = AnalyzeOptions()
+
         # Validate input
         self._validate_data(input.data)
 
