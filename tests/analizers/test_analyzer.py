@@ -10,6 +10,8 @@ import pytest
 
 from dataspot.analyzers.analyzer import Analyzer
 from dataspot.exceptions import DataspotError
+from dataspot.models.analyzer import AnalyzeOutput
+from dataspot.models.finder import FindOutput
 
 
 class TestAnalyzerInitialization:
@@ -57,17 +59,22 @@ class TestAnalyzerExecute:
         mock_pattern = Mock()
         mock_pattern.percentage = 60.0
         mock_pattern.count = 3
-        mock_finder.execute.return_value = [mock_pattern]
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[mock_pattern],
+            total_records=len(self.test_data),
+            total_patterns=1,
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.analyzer.execute(self.test_data, ["country", "device"])
 
-        # Check result structure
-        assert "patterns" in result
-        assert "insights" in result
-        assert "statistics" in result
-        assert "field_stats" in result
-        assert "top_patterns" in result
+        # Check result type and structure
+        assert isinstance(result, AnalyzeOutput)
+        assert hasattr(result, "patterns")
+        assert hasattr(result, "insights")
+        assert hasattr(result, "statistics")
+        assert hasattr(result, "field_stats")
+        assert hasattr(result, "top_patterns")
 
         # Check that Finder was called
         mock_finder.execute.assert_called_once_with(
@@ -78,7 +85,11 @@ class TestAnalyzerExecute:
     def test_execute_with_query(self, mock_finder_class):
         """Test execute with query filtering."""
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=len(self.test_data),
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         query = {"country": "US"}
@@ -88,14 +99,19 @@ class TestAnalyzerExecute:
         mock_finder.execute.assert_called_once_with(self.test_data, ["device"], query)
 
         # Check statistics calculation includes filtering
-        assert result["statistics"]["total_records"] == 5
-        assert result["statistics"]["filtered_records"] <= 5
+        assert isinstance(result, AnalyzeOutput)
+        assert result.statistics.total_records == 5
+        assert result.statistics.filtered_records <= 5
 
     @patch("dataspot.analyzers.analyzer.Finder")
     def test_execute_with_kwargs(self, mock_finder_class):
         """Test execute with additional kwargs."""
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=len(self.test_data),
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         kwargs = {"min_percentage": 10, "max_depth": 2}
@@ -103,11 +119,11 @@ class TestAnalyzerExecute:
             self.test_data, ["country"], query=None, **kwargs
         )
 
-        # Should return proper analyzer result structure, not empty dict
-        assert "patterns" in result
-        assert "statistics" in result
-        assert "field_stats" in result
-        assert result["patterns"] == []
+        # Should return proper analyzer result structure
+        assert isinstance(result, AnalyzeOutput)
+        assert result.patterns == []
+        assert hasattr(result.statistics, "total_records")
+        assert result.field_stats is not None
 
         # Check that kwargs were passed to Finder
         mock_finder.execute.assert_called_once_with(
@@ -123,14 +139,19 @@ class TestAnalyzerExecute:
     def test_execute_empty_data(self, mock_finder_class):
         """Test execute with empty data."""
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=0,
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.analyzer.execute([], ["field"])
 
-        assert result["statistics"]["total_records"] == 0
-        assert result["patterns"] == []
-        assert result["insights"]["patterns_found"] == 0
+        assert isinstance(result, AnalyzeOutput)
+        assert result.statistics.total_records == 0
+        assert result.patterns == []
+        assert result.insights.patterns_found == 0
 
 
 class TestAnalyzerStatistics:
@@ -288,68 +309,82 @@ class TestAnalyzerIntegration:
             mock_patterns.append(pattern)
 
         mock_finder = Mock()
-        mock_finder.execute.return_value = mock_patterns
+        mock_finder.execute.return_value = FindOutput(
+            patterns=mock_patterns,
+            total_records=len(test_data),
+            total_patterns=len(mock_patterns),
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.analyzer.execute(test_data, ["country", "device", "category"])
 
         # Verify comprehensive result structure
-        assert len(result["patterns"]) == 3
-        assert result["insights"]["patterns_found"] == 3
-        assert result["insights"]["max_concentration"] == 60.0
-        assert result["insights"]["avg_concentration"] == 40.0
+        assert isinstance(result, AnalyzeOutput)
+        assert len(result.patterns) == 3
+        assert result.insights.patterns_found == 3
+        assert result.insights.max_concentration == 60.0
+        assert result.insights.avg_concentration == 40.0
 
         # Verify statistics
-        assert result["statistics"]["total_records"] == 5
-        assert result["statistics"]["patterns_found"] == 3
-        assert result["statistics"]["max_concentration"] == 60.0
-        assert result["statistics"]["avg_concentration"] == 40.0
+        assert result.statistics.total_records == 5
+        assert result.statistics.patterns_found == 3
+        assert result.statistics.max_concentration == 60.0
+        assert result.statistics.avg_concentration == 40.0
 
         # Verify top patterns
-        assert len(result["top_patterns"]) == 3
-        assert result["top_patterns"] == mock_patterns
+        assert len(result.top_patterns) == 3
+        assert result.top_patterns == mock_patterns
 
         # Verify field stats
-        assert "field_stats" in result
-        assert len(result["field_stats"]) == 3  # country, device, category
+        assert result.field_stats is not None
+        assert len(result.field_stats) == 3  # country, device, category
 
     @patch("dataspot.analyzers.analyzer.Finder")
     def test_execute_with_query_integration(self, mock_finder_class):
         """Test execute with query filtering integration."""
-        test_data = [
+        self.test_data = [
             {"country": "US", "active": True},
             {"country": "US", "active": False},
             {"country": "EU", "active": True},
         ]
 
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=len(self.test_data),
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         query = {"active": True}
-        result = self.analyzer.execute(test_data, ["country"], query=query)
+        result = self.analyzer.execute(self.test_data, ["country"], query=query)
 
         # Check statistics reflect filtering
-        assert result["statistics"]["total_records"] == 3
-        assert result["statistics"]["filtered_records"] == 2
-        assert result["statistics"]["filter_ratio"] == 66.67
+        assert result.statistics.total_records == 3
+        assert result.statistics.filtered_records == 2
+        assert result.statistics.filter_ratio == 66.67
 
     @patch("dataspot.analyzers.analyzer.Finder")
     def test_execute_no_patterns_found(self, mock_finder_class):
         """Test execute when no patterns are found."""
+        test_data = [{"field": "value"}]
+
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=len(test_data),
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
-        test_data = [{"field": "value"}]
         result = self.analyzer.execute(test_data, ["field"])
 
         # Check handling of no patterns
-        assert result["patterns"] == []
-        assert result["insights"]["patterns_found"] == 0
-        assert result["statistics"]["max_concentration"] == 0
-        assert result["statistics"]["avg_concentration"] == 0
-        assert result["top_patterns"] == []
+        assert result.patterns == []
+        assert result.insights.patterns_found == 0
+        assert result.statistics.max_concentration == 0
+        assert result.statistics.avg_concentration == 0
+        assert result.top_patterns == []
 
 
 class TestAnalyzerEdgeCases:
@@ -365,11 +400,15 @@ class TestAnalyzerEdgeCases:
         test_data = [{"field": "value"}]
 
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=len(test_data),
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.analyzer.execute(test_data, [])
-        assert "patterns" in result
+        assert result.patterns == []
 
     @patch("dataspot.analyzers.analyzer.Finder")
     def test_large_dataset_performance(self, mock_finder_class):
@@ -381,14 +420,18 @@ class TestAnalyzerEdgeCases:
         ]
 
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=len(test_data),
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.analyzer.execute(test_data, ["category", "type"])
 
         # Should complete without performance issues
-        assert result["statistics"]["total_records"] == 1000
-        assert "field_stats" in result
+        assert result.statistics.total_records == 1000
+        assert result.field_stats is not None
 
     def test_concentration_distribution_edge_cases(self):
         """Test concentration distribution with edge cases."""

@@ -12,6 +12,8 @@ import pytest
 from dataspot.analyzers.discovery import Discovery
 from dataspot.exceptions import DataspotError
 from dataspot.models import Pattern
+from dataspot.models.discovery import DiscoverOutput
+from dataspot.models.finder import FindOutput
 
 
 class TestDiscoveryInitialization:
@@ -57,21 +59,30 @@ class TestDiscoveryExecute:
         mock_pattern.path = "country=US"
 
         mock_finder = Mock()
-        mock_finder.execute.return_value = [mock_pattern]
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[mock_pattern],
+            total_records=len(self.test_data),
+            total_patterns=1,
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.discovery.execute(self.test_data)
 
-        assert "top_patterns" in result
-        assert "field_ranking" in result
-        assert "combinations_tried" in result
-        assert "statistics" in result
+        assert isinstance(result, DiscoverOutput)
+        assert hasattr(result, "top_patterns")
+        assert hasattr(result, "field_ranking")
+        assert hasattr(result, "combinations_tried")
+        assert hasattr(result, "statistics")
 
     @patch("dataspot.analyzers.discovery.Finder")
     def test_execute_with_parameters(self, mock_finder_class):
         """Test execute with custom parameters."""
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=len(self.test_data),
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.discovery.execute(
@@ -79,30 +90,37 @@ class TestDiscoveryExecute:
         )
 
         # Should use custom parameters
-        assert "top_patterns" in result
-        assert isinstance(result["combinations_tried"], list)
+        assert isinstance(result, DiscoverOutput)
+        assert result.top_patterns is not None
+        assert isinstance(result.combinations_tried, list)
 
     @patch("dataspot.analyzers.discovery.Finder")
     def test_execute_with_query(self, mock_finder_class):
         """Test execute with query filtering."""
         mock_finder = Mock()
-        mock_finder.execute.return_value = []
+        mock_finder.execute.return_value = FindOutput(
+            patterns=[],
+            total_records=2,  # Filtered records
+            total_patterns=0,
+        )
         mock_finder_class.return_value = mock_finder
 
         query = {"country": "US"}
         result = self.discovery.execute(self.test_data, query=query)
 
         # Should filter data before analysis
-        assert result["statistics"]["total_records"] <= len(self.test_data)
+        assert isinstance(result, DiscoverOutput)
+        assert result.statistics.total_records <= len(self.test_data)
 
     def test_execute_with_empty_data(self):
         """Test execute with empty data."""
         result = self.discovery.execute([])
 
-        assert result["top_patterns"] == []
-        assert result["field_ranking"] == []
-        assert result["combinations_tried"] == []
-        assert result["statistics"]["total_records"] == 0
+        assert isinstance(result, DiscoverOutput)
+        assert result.top_patterns == []
+        assert result.field_ranking == []
+        assert result.combinations_tried == []
+        assert result.statistics.total_records == 0
 
     def test_execute_with_invalid_data(self):
         """Test execute with invalid data."""
@@ -286,7 +304,11 @@ class TestDiscoveryPatternCombinations:
         pattern2.path = "field1=A > field2=X"
 
         mock_finder = Mock()
-        mock_finder.execute.side_effect = [[pattern1], [pattern2], []]
+        mock_finder.execute.side_effect = [
+            FindOutput(patterns=[pattern1], total_records=1, total_patterns=1),
+            FindOutput(patterns=[pattern2], total_records=1, total_patterns=1),
+            FindOutput(patterns=[], total_records=1, total_patterns=0),
+        ]
         mock_finder_class.return_value = mock_finder
 
         test_data = [{"field1": "A", "field2": "X"}]
@@ -297,7 +319,7 @@ class TestDiscoveryPatternCombinations:
             field_scores,
             max_fields=2,
             max_combinations=5,
-            min_concentration=10.0,
+            min_percentage=10.0,
         )
 
         # Should find patterns and track combinations
@@ -410,17 +432,21 @@ class TestDiscoveryIntegration:
             patterns.append(pattern)
 
         mock_finder = Mock()
-        mock_finder.execute.return_value = patterns[:2]  # Return subset for each call
+        mock_finder.execute.return_value = FindOutput(
+            patterns=patterns[:2],  # Return subset for each call
+            total_records=len(test_data),
+            total_patterns=2,
+        )
         mock_finder_class.return_value = mock_finder
 
         result = self.discovery.execute(test_data, max_fields=3, max_combinations=10)
 
         # Verify comprehensive results
-        assert len(result["top_patterns"]) > 0
-        assert len(result["field_ranking"]) > 0
-        assert len(result["combinations_tried"]) > 0
-        assert result["statistics"]["total_records"] == 100
-        assert result["statistics"]["fields_analyzed"] > 0
+        assert len(result.top_patterns) > 0
+        assert len(result.field_ranking) > 0
+        assert len(result.combinations_tried) > 0
+        assert result.statistics.total_records == 100
+        assert result.statistics.fields_analyzed > 0
 
 
 class TestDiscoveryEdgeCases:
@@ -434,17 +460,20 @@ class TestDiscoveryEdgeCases:
         """Test empty discovery result building."""
         result = self.discovery._build_empty_discovery_result()
 
-        assert result["top_patterns"] == []
-        assert result["field_ranking"] == []
-        assert result["combinations_tried"] == []
-        assert result["statistics"]["total_records"] == 0
+        assert result.top_patterns == []
+        assert result.field_ranking == []
+        assert result.combinations_tried == []
+        assert result.statistics.total_records == 0
 
     @patch("dataspot.analyzers.discovery.Finder")
     def test_discovery_with_problematic_fields(self, mock_finder_class):
         """Test discovery when some fields cause exceptions."""
         # Mock finder to raise exception for certain fields
         mock_finder = Mock()
-        mock_finder.execute.side_effect = [Exception("Field error"), []]
+        mock_finder.execute.side_effect = [
+            Exception("Field error"),
+            FindOutput(patterns=[], total_records=1, total_patterns=0),
+        ]
         mock_finder_class.return_value = mock_finder
 
         test_data = [{"good_field": "A", "bad_field": "B"}]
@@ -474,8 +503,8 @@ class TestDiscoveryEdgeCases:
         result = self.discovery.execute(test_data, max_fields=2, max_combinations=5)
 
         # Should complete without performance issues
-        assert result["statistics"]["total_records"] == 1000
-        assert "field_ranking" in result
+        assert result.statistics.total_records == 1000
+        assert result.field_ranking is not None
 
     def test_field_detection_edge_cases(self):
         """Test field detection with edge cases."""

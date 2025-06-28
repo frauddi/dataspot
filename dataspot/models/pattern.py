@@ -1,6 +1,6 @@
 """Data models for dataspot patterns and structures."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, List
 
 
@@ -18,3 +18,7 @@ class Pattern:
         """Post-initialization hook."""
         if self.samples is None:
             self.samples = []
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert pattern to dictionary."""
+        return asdict(self)

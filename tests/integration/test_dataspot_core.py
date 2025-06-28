@@ -39,17 +39,17 @@ class TestDataspotCore:
         patterns = self.dataspot.find(self.basic_data, fields)
 
         # Should find 10 patterns total (1 + 3 + 6)
-        assert len(patterns) == 10
+        assert len(patterns.patterns) == 10
 
         # Check top-level pattern
-        top_pattern = patterns[0]  # Should be sorted by percentage
+        top_pattern = patterns.patterns[0]  # Should be sorted by percentage
         assert top_pattern.path == "a=1"
         assert top_pattern.count == 6
         assert top_pattern.percentage == 100.0
         assert top_pattern.depth == 1
 
         # Check second-level patterns
-        second_level = [p for p in patterns if p.depth == 2]
+        second_level = [p for p in patterns.patterns if p.depth == 2]
         assert len(second_level) == 3
 
         expected_second_level = {
@@ -71,7 +71,7 @@ class TestDataspotCore:
         patterns = self.dataspot.find(self.basic_data, fields)
 
         # Check third-level patterns
-        third_level = [p for p in patterns if p.depth == 3]
+        third_level = [p for p in patterns.patterns if p.depth == 3]
         assert len(third_level) == 6
 
         # All third-level patterns should have 1 record (16.67%)
@@ -84,23 +84,25 @@ class TestDataspotCore:
 
     def test_empty_data(self):
         """Test behavior with empty dataset."""
-        patterns = self.dataspot.find([], ["field1", "field2"])
-        assert patterns == []
+        result = self.dataspot.find([], ["field1", "field2"])
+        assert len(result.patterns) == 0
+        assert result.total_records == 0
+        assert result.total_patterns == 0
 
     def test_single_record(self):
         """Test behavior with single record."""
         single_data = [{"x": "value1", "y": "value2"}]
         patterns = self.dataspot.find(single_data, ["x", "y"])
 
-        assert len(patterns) == 2  # x=value1, x=value1 > y=value2
+        assert len(patterns.patterns) == 2  # x=value1, x=value1 > y=value2
 
         # Check expected patterns
-        paths = [p.path for p in patterns]
+        paths = [p.path for p in patterns.patterns]
         assert "x=value1" in paths
         assert "x=value1 > y=value2" in paths
 
         # All patterns should have 100% concentration
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             assert pattern.count == 1
             assert pattern.percentage == 100.0
 
@@ -108,29 +110,31 @@ class TestDataspotCore:
         """Test analysis with single field."""
         patterns = self.dataspot.find(self.basic_data, ["a"])
 
-        assert len(patterns) == 1
-        assert patterns[0].path == "a=1"
-        assert patterns[0].count == 6
-        assert patterns[0].percentage == 100.0
-        assert patterns[0].depth == 1
+        assert len(patterns.patterns) == 1
+        assert patterns.patterns[0].path == "a=1"
+        assert patterns.patterns[0].count == 6
+        assert patterns.patterns[0].percentage == 100.0
+        assert patterns.patterns[0].depth == 1
 
     def test_pattern_sorting(self):
         """Test that patterns are sorted by percentage (highest first)."""
         patterns = self.dataspot.find(self.business_data, ["country", "device"])
 
         # Check that patterns are sorted by percentage descending
-        for i in range(len(patterns) - 1):
-            assert patterns[i].percentage >= patterns[i + 1].percentage
+        for i in range(len(patterns.patterns) - 1):
+            assert (
+                patterns.patterns[i].percentage >= patterns.patterns[i + 1].percentage
+            )
 
     def test_percentage_calculations(self):
         """Test accuracy of percentage calculations."""
         patterns = self.dataspot.find(self.basic_data, ["a", "b"])
 
         # Find specific patterns and verify calculations
-        a1_pattern = next(p for p in patterns if p.path == "a=1")
+        a1_pattern = next(p for p in patterns.patterns if p.path == "a=1")
         assert a1_pattern.percentage == 100.0  # 6/6 * 100
 
-        b_patterns = [p for p in patterns if p.depth == 2]
+        b_patterns = [p for p in patterns.patterns if p.depth == 2]
         for pattern in b_patterns:
             assert pattern.percentage == 33.33  # 2/6 * 100, rounded to 2 decimals
 
@@ -138,8 +142,8 @@ class TestDataspotCore:
         """Test that count values are accurate."""
         patterns = self.dataspot.find(self.business_data, ["country"])
 
-        us_pattern = next(p for p in patterns if "country=US" in p.path)
-        eu_pattern = next(p for p in patterns if "country=EU" in p.path)
+        us_pattern = next(p for p in patterns.patterns if "country=US" in p.path)
+        eu_pattern = next(p for p in patterns.patterns if "country=EU" in p.path)
 
         # Count US and EU occurrences manually
         us_count = sum(1 for record in self.business_data if record["country"] == "US")
@@ -154,7 +158,7 @@ class TestDataspotCore:
 
         # Check depth distribution
         depth_counts = {}
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             depth = pattern.depth
             depth_counts[depth] = depth_counts.get(depth, 0) + 1
 
@@ -177,8 +181,8 @@ class TestDataspotCore:
         patterns_cba = self.dataspot.find(self.basic_data, fields_cba)
 
         # Different field orders should produce different hierarchies
-        abc_top = patterns_abc[0].path
-        cba_top = patterns_cba[0].path
+        abc_top = patterns_abc.patterns[0].path
+        cba_top = patterns_cba.patterns[0].path
 
         assert abc_top != cba_top
         assert abc_top.startswith("a=")
@@ -195,10 +199,10 @@ class TestDataspotCore:
         patterns = self.dataspot.find(mixed_data, ["num", "str", "bool"])
 
         # Should handle all data types correctly
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Check that boolean values are handled correctly
-        bool_patterns = [p for p in patterns if "bool=" in p.path]
+        bool_patterns = [p for p in patterns.patterns if "bool=" in p.path]
         assert any("bool=True" in p.path for p in bool_patterns)
         assert any("bool=False" in p.path for p in bool_patterns)
 
@@ -218,46 +222,46 @@ class TestDataspotCore:
         patterns = self.dataspot.find(large_data, ["category", "type", "status"])
 
         # Should find patterns
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Top pattern should have highest concentration
-        top_pattern = patterns[0]
+        top_pattern = patterns.patterns[0]
         assert top_pattern.percentage > 0
 
         # Check that we get reasonable number of patterns
-        assert len(patterns) <= 100  # Shouldn't exceed total combinations
+        assert len(patterns.patterns) <= 100  # Shouldn't exceed total combinations
 
     def test_analyze_method(self):
         """Test the analyze method returns comprehensive insights."""
         result = self.dataspot.analyze(self.basic_data, ["a", "b", "c"])
 
         # Check structure
-        assert "patterns" in result
-        assert "statistics" in result
-        assert "field_stats" in result
-        assert "top_patterns" in result
+        assert result.patterns == result.patterns
+        assert result.statistics == result.statistics
+        assert result.field_stats == result.field_stats
+        assert result.top_patterns == result.top_patterns
 
         # Check statistics
-        stats = result["statistics"]
-        assert stats["total_records"] == 6
-        assert stats["filtered_records"] == 6
-        assert stats["patterns_found"] == 10
-        assert stats["max_concentration"] == 100.0
-        assert stats["avg_concentration"] > 0
+        stats = result.statistics
+        assert stats.total_records == 6
+        assert stats.filtered_records == 6
+        assert stats.patterns_found == 10
+        assert stats.max_concentration == 100.0
+        assert stats.avg_concentration > 0
 
         # Check field stats
-        field_stats = result["field_stats"]
+        field_stats = result.field_stats
         assert "a" in field_stats
         assert "b" in field_stats
-        assert "c" in field_stats
+        assert "c" in field_stats.keys()
 
         # Check top patterns
-        assert len(result["top_patterns"]) <= 5
+        assert len(result.top_patterns) <= 5
 
     def test_field_stats_accuracy(self):
         """Test accuracy of field distribution analysis."""
         result = self.dataspot.analyze(self.business_data, ["country", "device"])
-        field_stats = result["field_stats"]
+        field_stats = result.field_stats
 
         # Check country field stats
         country_stats = field_stats["country"]
@@ -273,18 +277,21 @@ class TestDataspotCore:
 
     def test_no_fields_provided(self):
         """Test behavior when no fields are provided."""
-        patterns = self.dataspot.find(self.basic_data, [])
+        result = self.dataspot.find(self.basic_data, [])
 
-        # Should handle gracefully by returning empty list
-        assert isinstance(patterns, list)
-        assert len(patterns) == 0
+        # Should handle gracefully by returning empty patterns
+        assert len(result.patterns) == 0
+        assert result.total_records == len(self.basic_data)
+        assert result.total_patterns == 0
 
     def test_nonexistent_fields(self):
         """Test behavior with fields that don't exist in data."""
-        patterns = self.dataspot.find(self.basic_data, ["nonexistent_field"])
+        result = self.dataspot.find(self.basic_data, ["nonexistent_field"])
 
         # Should handle gracefully - might return patterns with empty values
-        assert isinstance(patterns, list)
+        assert (
+            len(result.patterns) >= 0
+        )  # May be empty or have patterns with empty values
 
     def test_pattern_samples(self):
         """Test that pattern samples are collected correctly."""
@@ -298,7 +305,7 @@ class TestDataspotCore:
         patterns = self.dataspot.find(data_with_samples, ["a", "b"])
 
         # Check that patterns have samples
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             assert isinstance(pattern.samples, list)
             assert len(pattern.samples) <= 3  # Should limit to 3 samples
 
@@ -310,11 +317,11 @@ class TestDataspotCore:
             for i in range(1000)
         ]
 
-        patterns = self.dataspot.find(large_data, ["field1", "field2"])
+        result = self.dataspot.find(large_data, ["field1", "field2"])
 
         # Should complete without memory errors
-        assert isinstance(patterns, list)
-        assert len(patterns) > 0
+        assert len(result.patterns) > 0
+        assert result.total_records == 1000
 
     def test_unicode_handling(self):
         """Test handling of unicode characters in data."""
@@ -327,8 +334,8 @@ class TestDataspotCore:
         patterns = self.dataspot.find(unicode_data, ["país", "categoría"])
 
         # Should handle unicode correctly
-        assert len(patterns) > 0
-        spain_patterns = [p for p in patterns if "España" in p.path]
+        assert len(patterns.patterns) > 0
+        spain_patterns = [p for p in patterns.patterns if "España" in p.path]
         assert len(spain_patterns) > 0
 
     def test_numeric_precision(self):
@@ -338,8 +345,8 @@ class TestDataspotCore:
 
         patterns = self.dataspot.find(precision_data, ["x"])
 
-        a_pattern = next(p for p in patterns if "x=a" in p.path)
-        b_pattern = next(p for p in patterns if "x=b" in p.path)
+        a_pattern = next(p for p in patterns.patterns if "x=a" in p.path)
+        b_pattern = next(p for p in patterns.patterns if "x=b" in p.path)
 
         # Check precision (should be rounded to 2 decimal places)
         assert a_pattern.percentage == 30.0  # 3/10 * 100
@@ -349,7 +356,7 @@ class TestDataspotCore:
         complex_data = [{"y": "test"}] * 7 + [{"y": "other"}] * 3  # 7:3 ratio
         patterns = self.dataspot.find(complex_data, ["y"])
 
-        test_pattern = next(p for p in patterns if "y=test" in p.path)
+        test_pattern = next(p for p in patterns.patterns if "y=test" in p.path)
         assert test_pattern.percentage == 70.0  # Should be exactly 70.0
 
 

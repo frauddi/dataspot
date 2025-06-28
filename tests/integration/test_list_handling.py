@@ -28,14 +28,14 @@ class TestBasicListHandling:
         patterns = self.dataspot.find(list_data, ["tags", "user_id"])
 
         # Should expand list values into separate patterns
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find patterns for individual tag values
-        tag_patterns = [p for p in patterns if "tags=" in p.path]
+        tag_patterns = [p for p in patterns.patterns if "tags=" in p.path]
         assert len(tag_patterns) > 0
 
         # Should find "premium" tag in multiple records
-        premium_patterns = [p for p in patterns if "tags=premium" in p.path]
+        premium_patterns = [p for p in patterns.patterns if "tags=premium" in p.path]
         assert len(premium_patterns) > 0
 
     def test_multiple_list_fields(self):
@@ -49,11 +49,13 @@ class TestBasicListHandling:
         patterns = self.dataspot.find(multi_list_data, ["tags", "categories"])
 
         # Should create patterns for all combinations
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find combinations like tags=tech > categories=software
         combo_patterns = [
-            p for p in patterns if "tags=" in p.path and "categories=" in p.path
+            p
+            for p in patterns.patterns
+            if "tags=" in p.path and "categories=" in p.path
         ]
         assert len(combo_patterns) > 0
 
@@ -68,10 +70,10 @@ class TestBasicListHandling:
         patterns = self.dataspot.find(empty_list_data, ["tags", "category"])
 
         # Should handle empty lists gracefully
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find patterns for non-empty fields
-        category_patterns = [p for p in patterns if "category=" in p.path]
+        category_patterns = [p for p in patterns.patterns if "category=" in p.path]
         assert len(category_patterns) > 0
 
     def test_mixed_list_and_scalar_values(self):
@@ -85,10 +87,10 @@ class TestBasicListHandling:
         patterns = self.dataspot.find(mixed_data, ["field", "type"])
 
         # Should handle both list and scalar values
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find patterns for both list items and scalar values
-        field_patterns = [p for p in patterns if "field=" in p.path]
+        field_patterns = [p for p in patterns.patterns if "field=" in p.path]
         assert len(field_patterns) > 0
 
     def test_nested_list_values(self):
@@ -101,7 +103,7 @@ class TestBasicListHandling:
         patterns = self.dataspot.find(nested_data, ["nested", "id"])
 
         # Should handle nested structures (likely by string conversion)
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_list_with_duplicate_values(self):
         """Test handling of lists containing duplicate values."""
@@ -113,10 +115,10 @@ class TestBasicListHandling:
         patterns = self.dataspot.find(duplicate_data, ["tags", "user"])
 
         # Should handle duplicates in lists appropriately
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Behavior with duplicates may vary by implementation
-        tag_patterns = [p for p in patterns if "tags=" in p.path]
+        tag_patterns = [p for p in patterns.patterns if "tags=" in p.path]
         assert len(tag_patterns) > 0
 
 
@@ -142,7 +144,7 @@ class TestListPathExpansion:
 
         # Test actual pattern finding
         patterns = self.dataspot.find(data, ["tags", "id"])
-        tag_patterns = [p for p in patterns if "tags=" in p.path]
+        tag_patterns = [p for p in patterns.patterns if "tags=" in p.path]
         assert len(tag_patterns) >= 2  # At least premium and active
 
     def test_path_expansion_multiple_lists(self):
@@ -205,7 +207,7 @@ class TestListPathExpansion:
 
         # Test that actual pattern finding still works (with limits)
         patterns = self.dataspot.find(data, ["tags", "categories"], limit=100)
-        assert len(patterns) <= 100  # Should respect limit
+        assert len(patterns.patterns) <= 100  # Should respect limit
 
 
 class TestListIntegrationWithPatterns:
@@ -227,7 +229,7 @@ class TestListIntegrationWithPatterns:
 
         # Find premium tag pattern
         premium_patterns = [
-            p for p in patterns if "tags=premium" in p.path and p.depth == 1
+            p for p in patterns.patterns if "tags=premium" in p.path and p.depth == 1
         ]
         assert len(premium_patterns) == 1
 
@@ -247,7 +249,7 @@ class TestListIntegrationWithPatterns:
         patterns = self.dataspot.find(percentage_data, ["tags"])
 
         # Find common tag pattern
-        common_patterns = [p for p in patterns if "tags=common" in p.path]
+        common_patterns = [p for p in patterns.patterns if "tags=common" in p.path]
         assert len(common_patterns) == 1
 
         common_pattern = common_patterns[0]
@@ -265,15 +267,17 @@ class TestListIntegrationWithPatterns:
         patterns = self.dataspot.find(hierarchical_data, ["tags", "level", "status"])
 
         # Should create hierarchical patterns
-        depth_2_patterns = [p for p in patterns if p.depth == 2]
-        depth_3_patterns = [p for p in patterns if p.depth == 3]
+        depth_2_patterns = [p for p in patterns.patterns if p.depth == 2]
+        depth_3_patterns = [p for p in patterns.patterns if p.depth == 3]
 
         assert len(depth_2_patterns) > 0
         assert len(depth_3_patterns) > 0
 
         # Check specific hierarchical pattern
         tech_advanced = [
-            p for p in patterns if "tags=tech" in p.path and "level=advanced" in p.path
+            p
+            for p in patterns.patterns
+            if "tags=tech" in p.path and "level=advanced" in p.path
         ]
         assert len(tech_advanced) > 0
 
@@ -291,10 +295,10 @@ class TestListIntegrationWithPatterns:
         )
 
         # Should only include US records
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find premium tag from US records
-        us_patterns = [p for p in patterns if "tags=premium" in p.path]
+        us_patterns = [p for p in patterns.patterns if "tags=premium" in p.path]
         assert len(us_patterns) > 0
 
     def test_list_with_pattern_filtering(self):
@@ -311,11 +315,11 @@ class TestListIntegrationWithPatterns:
         )
 
         # Should filter out low-percentage patterns
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             assert pattern.percentage >= 15.0
 
         # Should include common patterns
-        common_patterns = [p for p in patterns if "tags=common" in p.path]
+        common_patterns = [p for p in patterns.patterns if "tags=common" in p.path]
         assert len(common_patterns) > 0
 
 
@@ -333,10 +337,10 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(large_list_data, ["large_list", "id"])
 
         # Should handle large lists without performance issues
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should create patterns for list items
-        list_patterns = [p for p in patterns if "large_list=" in p.path]
+        list_patterns = [p for p in patterns.patterns if "large_list=" in p.path]
         assert len(list_patterns) > 0
 
     def test_lists_with_none_values(self):
@@ -349,7 +353,7 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(none_list_data, ["tags", "id"])
 
         # Should handle None values in lists
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_lists_with_empty_strings(self):
         """Test handling of lists containing empty strings."""
@@ -361,7 +365,7 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(empty_string_data, ["tags", "id"])
 
         # Should handle empty strings in lists
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_lists_with_mixed_types(self):
         """Test handling of lists containing mixed data types."""
@@ -373,7 +377,7 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(mixed_type_data, ["mixed", "id"])
 
         # Should handle mixed types in lists (likely by string conversion)
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_deeply_nested_lists(self):
         """Test handling of deeply nested list structures."""
@@ -385,7 +389,7 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(nested_data, ["nested", "id"])
 
         # Should handle nested structures (implementation-dependent)
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_list_with_duplicate_complex_values(self):
         """Test handling of lists with duplicate complex values."""
@@ -397,7 +401,7 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(complex_duplicate_data, ["items", "id"])
 
         # Should handle complex duplicates (likely by string conversion)
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_list_memory_efficiency(self):
         """Test memory efficiency with many list records."""
@@ -411,8 +415,8 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(many_lists_data, ["tags", "category"])
 
         # Should handle many list records efficiently
-        assert len(patterns) > 0
-        assert isinstance(patterns, list)
+        assert len(patterns.patterns) > 0
+        assert isinstance(patterns.patterns, list)
 
     def test_exponential_path_explosion_prevention(self):
         """Test that exponential path explosion is handled gracefully."""
@@ -429,10 +433,10 @@ class TestListEdgeCases:
         patterns = self.dataspot.find(explosion_data, ["field1", "field2", "field3"])
 
         # Should handle without memory/performance issues
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Verify that paths were actually generated
-        depth_3_patterns = [p for p in patterns if p.depth == 3]
+        depth_3_patterns = [p for p in patterns.patterns if p.depth == 3]
         assert len(depth_3_patterns) > 0
 
 
@@ -461,10 +465,10 @@ class TestListCustomPreprocessing:
         patterns = self.dataspot.find(preprocessor_data, ["tags", "id"])
 
         # Should handle preprocessor that converts string to list
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find individual tags
-        premium_patterns = [p for p in patterns if "tags=premium" in p.path]
+        premium_patterns = [p for p in patterns.patterns if "tags=premium" in p.path]
         assert len(premium_patterns) > 0
 
     def test_preprocessor_modifying_list_items(self):
@@ -485,7 +489,7 @@ class TestListCustomPreprocessing:
         patterns = self.dataspot.find(uppercase_data, ["tags", "id"])
 
         # Should find uppercase versions
-        premium_patterns = [p for p in patterns if "tags=PREMIUM" in p.path]
+        premium_patterns = [p for p in patterns.patterns if "tags=PREMIUM" in p.path]
         assert len(premium_patterns) > 0
 
     def test_preprocessor_converting_to_non_list(self):
@@ -506,7 +510,9 @@ class TestListCustomPreprocessing:
         patterns = self.dataspot.find(join_data, ["tags", "id"])
 
         # Should treat joined string as single value
-        joined_patterns = [p for p in patterns if "tags=premium,active" in p.path]
+        joined_patterns = [
+            p for p in patterns.patterns if "tags=premium,active" in p.path
+        ]
         assert len(joined_patterns) > 0
 
     def test_list_email_preprocessing_integration(self):
@@ -540,10 +546,10 @@ class TestListCustomPreprocessing:
         patterns = self.dataspot.find(email_list_data, ["emails", "department"])
 
         # Should apply email preprocessing to each email in list
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find patterns with email preprocessing applied
-        email_patterns = [p for p in patterns if "emails=" in p.path]
+        email_patterns = [p for p in patterns.patterns if "emails=" in p.path]
         assert len(email_patterns) > 0
 
 
@@ -565,7 +571,7 @@ class TestListValidation:
         patterns = self.dataspot.find(invalid_data, ["field", "id"])
 
         # Should handle non-list values gracefully
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_circular_reference_in_lists(self):
         """Test handling of circular references in list items."""
@@ -576,7 +582,7 @@ class TestListValidation:
 
         # Should handle circular references without infinite recursion
         patterns = self.dataspot.find(circular_data, ["items", "id"])
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
     def test_list_field_consistency(self):
         """Test consistency when same field has lists and non-lists."""
@@ -590,8 +596,8 @@ class TestListValidation:
         patterns = self.dataspot.find(inconsistent_data, ["field", "id"])
 
         # Should handle mixed list/non-list values consistently
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find patterns for both list items and scalar values
-        field_patterns = [p for p in patterns if "field=" in p.path]
+        field_patterns = [p for p in patterns.patterns if "field=" in p.path]
         assert len(field_patterns) > 0

@@ -9,8 +9,8 @@ import re
 import pytest
 
 from dataspot import Dataspot
-from dataspot.core import Pattern
 from dataspot.exceptions import QueryError
+from dataspot.models.finder import Pattern
 from dataspot.query import (
     QueryBuilder,
     create_business_query,
@@ -71,12 +71,12 @@ class TestQueryFiltering:
         )
 
         # Should only find patterns from US records
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             assert "country=US" in pattern.path
 
         # Verify count - should be based on filtered data only
         us_records = [r for r in self.test_data if r["country"] == "US"]
-        top_pattern = next(p for p in patterns if p.path == "country=US")
+        top_pattern = next(p for p in patterns.patterns if p.path == "country=US")
         assert top_pattern.count == len(us_records)
 
     def test_multiple_field_query(self):
@@ -94,11 +94,11 @@ class TestQueryFiltering:
         ]
 
         # Top pattern should represent all filtered records
-        top_pattern = patterns[0]
+        top_pattern = patterns.patterns[0]
         assert top_pattern.count == len(us_mobile_records)
 
         # All patterns should at least contain the first constraint
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             assert "country=US" in pattern.path
 
     def test_list_value_query(self):
@@ -109,7 +109,7 @@ class TestQueryFiltering:
         )
 
         # Should include records from US and CA only
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             assert ("country=US" in pattern.path) or ("country=CA" in pattern.path)
             assert "country=EU" not in pattern.path
 
@@ -121,7 +121,7 @@ class TestQueryFiltering:
         )
 
         # Should return empty list
-        assert patterns == []
+        assert patterns.patterns == []
 
     def test_empty_query(self):
         """Test behavior with empty query dict."""
@@ -132,7 +132,7 @@ class TestQueryFiltering:
 
         # Should behave same as no query
         patterns_no_query = self.dataspot.find(self.test_data, ["country", "device"])
-        assert len(patterns) == len(patterns_no_query)
+        assert len(patterns.patterns) == len(patterns_no_query.patterns)
 
 
 class TestPatternFiltering:
@@ -165,11 +165,11 @@ class TestPatternFiltering:
         )
 
         # All filtered patterns should have >= 30% concentration
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert pattern.percentage >= 30.0
 
         # Should have fewer patterns than unfiltered
-        assert len(filtered) <= len(all_patterns)
+        assert len(filtered.patterns) <= len(all_patterns.patterns)
 
     def test_max_percentage_filter(self):
         """Test maximum percentage filtering."""
@@ -178,7 +178,7 @@ class TestPatternFiltering:
         )
 
         # All patterns should have <= 25% concentration
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert pattern.percentage <= 25.0
 
     def test_min_count_filter(self):
@@ -188,7 +188,7 @@ class TestPatternFiltering:
         )
 
         # All patterns should have >= 15 records
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert pattern.count >= 15
 
     def test_max_depth_filter(self):
@@ -198,11 +198,11 @@ class TestPatternFiltering:
         )
 
         # All patterns should have depth <= 2
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert pattern.depth <= 2
 
         # Should not include any depth-3 patterns
-        depth_3_patterns = [p for p in filtered if p.depth == 3]
+        depth_3_patterns = [p for p in filtered.patterns if p.depth == 3]
         assert len(depth_3_patterns) == 0
 
     def test_contains_filter(self):
@@ -212,7 +212,7 @@ class TestPatternFiltering:
         )
 
         # All patterns should contain "cat_1" in their path
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert "cat_1" in pattern.path
 
     def test_exclude_filter_single(self):
@@ -222,7 +222,7 @@ class TestPatternFiltering:
         )
 
         # No patterns should contain "cat_0"
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert "cat_0" not in pattern.path
 
     def test_exclude_filter_list(self):
@@ -232,7 +232,7 @@ class TestPatternFiltering:
         )
 
         # No patterns should contain either excluded term
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert "cat_0" not in pattern.path
             assert "cat_1" not in pattern.path
 
@@ -245,7 +245,7 @@ class TestPatternFiltering:
 
         # All patterns should match the regex
         regex_pattern = re.compile(r"cat_[02468]")
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert regex_pattern.search(pattern.path) is not None
 
     def test_limit_filter(self):
@@ -258,15 +258,17 @@ class TestPatternFiltering:
         )
 
         # Should return at most 5 patterns
-        assert len(limited) <= 5
-        assert len(limited) <= len(all_patterns)
+        assert len(limited.patterns) <= 5
+        assert len(limited.patterns) <= len(all_patterns.patterns)
 
         # Should return the top patterns (highest percentage first)
-        if len(all_patterns) >= 5:
-            assert len(limited) == 5
+        if len(all_patterns.patterns) >= 5:
+            assert len(limited.patterns) == 5
             # Should be ordered by percentage descending
-            for i in range(len(limited) - 1):
-                assert limited[i].percentage >= limited[i + 1].percentage
+            for i in range(len(limited.patterns) - 1):
+                assert (
+                    limited.patterns[i].percentage >= limited.patterns[i + 1].percentage
+                )
 
     def test_combined_filters(self):
         """Test combining multiple filters."""
@@ -281,14 +283,14 @@ class TestPatternFiltering:
         )
 
         # Verify all filter conditions
-        for pattern in filtered:
+        for pattern in filtered.patterns:
             assert pattern.percentage >= 10.0  # min_percentage
             assert pattern.depth <= 2  # max_depth
             assert "cat" in pattern.path  # contains
             assert "type_2" not in pattern.path  # exclude
 
         # Should respect limit
-        assert len(filtered) <= 10
+        assert len(filtered.patterns) <= 10
 
     def test_conflicting_filters(self):
         """Test behavior with conflicting filter values."""
@@ -303,7 +305,7 @@ class TestPatternFiltering:
         )
 
         # Should return empty list
-        assert filtered == []
+        assert filtered.patterns == []
 
 
 class TestQueryBuilderBasics:
@@ -395,11 +397,11 @@ class TestQueryBuilderBasics:
         )
 
         # Should return Pattern objects
-        assert isinstance(patterns, list)
-        assert all(isinstance(p, Pattern) for p in patterns)
+        assert isinstance(patterns.patterns, list)
+        assert all(isinstance(p, Pattern) for p in patterns.patterns)
 
         # Should only include US patterns
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             assert "country=US" in pattern.path
 
     def test_execute_vs_direct_dataspot_call(self):
@@ -420,8 +422,10 @@ class TestQueryBuilderBasics:
         )
 
         # Should produce identical results
-        assert len(builder_patterns) == len(direct_patterns)
-        for bp, dp in zip(builder_patterns, direct_patterns, strict=False):
+        assert len(builder_patterns.patterns) == len(direct_patterns.patterns)
+        for bp, dp in zip(
+            builder_patterns.patterns, direct_patterns.patterns, strict=False
+        ):
             assert bp.path == dp.path
             assert bp.count == dp.count
             assert bp.percentage == dp.percentage
@@ -673,12 +677,11 @@ class TestQueryBuilderUtilities:
             test_data, ["country", "device"]
         )
 
-        # Should return analysis dictionary
-        assert isinstance(result, dict)
-        assert "patterns" in result
-        assert "statistics" in result
-        assert "field_stats" in result
-        assert "top_patterns" in result
+        # Should return AnalyzeOutput dataclass
+        assert hasattr(result, "patterns")
+        assert hasattr(result, "statistics")
+        assert hasattr(result, "field_stats")
+        assert hasattr(result, "top_patterns")
 
 
 class TestPreConfiguredQueries:
@@ -729,13 +732,11 @@ class TestPreConfiguredQueries:
         test_data = [{"status": "active"}] * 60 + [{"status": "inactive"}] * 40
 
         # Use data quality query to find high concentrations
-        patterns = create_data_quality_query(self.dataspot).execute(
-            test_data, ["status"]
-        )
+        result = create_data_quality_query(self.dataspot).execute(test_data, ["status"])
 
         # Should find high concentration patterns
-        assert len(patterns) > 0
-        for pattern in patterns:
+        assert len(result.patterns) > 0
+        for pattern in result.patterns:
             assert pattern.percentage >= 50.0
 
 
@@ -762,7 +763,7 @@ class TestComplexQueryScenarios:
     def test_complex_business_analysis(self):
         """Test complex business analysis scenario."""
         # Find high-value enterprise patterns in north/south regions
-        patterns = (
+        result = (
             QueryBuilder(self.dataspot)
             .field("region", ["north", "south"])
             .field("segment", "enterprise")
@@ -774,7 +775,7 @@ class TestComplexQueryScenarios:
         )
 
         # Should apply all filters correctly
-        for pattern in patterns:
+        for pattern in result.patterns:
             assert pattern.percentage >= 8.0
             assert "premium" in pattern.path
             assert ("region=north" in pattern.path) or ("region=south" in pattern.path)
@@ -783,7 +784,7 @@ class TestComplexQueryScenarios:
     def test_fraud_detection_scenario(self):
         """Test fraud detection scenario."""
         # Simulate fraud detection query - filter for active users with premium products
-        suspicious_patterns = (
+        result = (
             create_fraud_query(self.dataspot)
             .field("active", "True")  # Boolean converted to string
             .exclude(["basic"])
@@ -792,10 +793,10 @@ class TestComplexQueryScenarios:
         )
 
         # Should find relevant patterns
-        assert len(suspicious_patterns) > 0
+        assert len(result.patterns) > 0
 
         # Should exclude basic products and only include premium
-        for pattern in suspicious_patterns:
+        for pattern in result.patterns:
             assert "basic" not in pattern.path
             assert "premium" in pattern.path
 
@@ -815,13 +816,13 @@ class TestComplexQueryScenarios:
         )
 
         # Execute final query
-        patterns = premium_builder.execute(
+        result = premium_builder.execute(
             self.complex_data, ["region", "segment", "product"]
         )
 
         # Should have applied all progressive filters
-        assert len(patterns) <= 3
-        for pattern in patterns:
+        assert len(result.patterns) <= 3
+        for pattern in result.patterns:
             assert pattern.percentage >= 10.0
 
     def test_query_builder_reuse(self):
@@ -835,17 +836,17 @@ class TestComplexQueryScenarios:
         )
 
         # Use for different field combinations
-        regional_patterns = base_query.copy().execute(
+        regional_result = base_query.copy().execute(
             self.complex_data, ["region", "segment"]
         )
 
-        product_patterns = base_query.copy().execute(
+        product_result = base_query.copy().execute(
             self.complex_data, ["product", "active"]
         )
 
         # Both should apply same base filters
-        for patterns in [regional_patterns, product_patterns]:
-            for pattern in patterns:
+        for result in [regional_result, product_result]:
+            for pattern in result.patterns:
                 assert pattern.percentage >= 15.0
                 assert pattern.depth <= 2
 
@@ -874,14 +875,14 @@ class TestComplexQueryScenarios:
         )
 
         # Verify all conditions are met
-        for pattern in result:
+        for pattern in result.patterns:
             assert pattern.percentage >= 8.0
             assert pattern.depth <= 2
             assert "enterprise" in pattern.path
             # Query filter ensures only north/south regions
             assert ("region=north" in pattern.path) or ("region=south" in pattern.path)
 
-        assert len(result) <= 5
+        assert len(result.patterns) <= 5
 
     def test_error_handling_in_complex_query(self):
         """Test error handling in complex query scenarios."""
@@ -922,5 +923,4 @@ class TestComplexQueryScenarios:
         )
 
         # Should complete efficiently
-        assert len(patterns) <= 20
-        assert isinstance(patterns, list)
+        assert len(patterns.patterns) <= 20

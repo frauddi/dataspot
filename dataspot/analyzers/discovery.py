@@ -3,7 +3,13 @@
 from itertools import combinations
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..models import Pattern
+from ..models.discovery import (
+    CombinationTried,
+    DiscoverOutput,
+    DiscoveryStatistics,
+    FieldRanking,
+)
+from ..models.pattern import Pattern
 from .base import Base
 from .finder import Finder
 
@@ -20,22 +26,22 @@ class Discovery(Base):
         data: List[Dict[str, Any]],
         max_fields: int = 3,
         max_combinations: int = 10,
-        min_concentration: float = 10.0,
+        min_percentage: float = 10.0,
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> DiscoverOutput:
         """Automatically discover the most interesting concentration patterns.
 
         Args:
             data: List of records (dictionaries)
             max_fields: Maximum number of fields to combine (default: 3)
             max_combinations: Maximum combinations to try (default: 10)
-            min_concentration: Minimum concentration to consider (default: 10%)
+            min_percentage: Minimum concentration to consider (default: 10%)
             query: Optional filters to apply to data
             **kwargs: Additional filtering options
 
         Returns:
-            Dictionary with discovered patterns and field analysis.
+            DiscoverOutput dataclass with discovered patterns and field analysis.
 
         """
         self._validate_data(data)
@@ -49,42 +55,66 @@ class Discovery(Base):
         available_fields = self._detect_categorical_fields(data)
         field_scores = self._score_fields_by_potential(data, available_fields, **kwargs)
 
-        all_patterns, combinations_tried = self._discover_pattern_combinations(
+        all_patterns, combinations_tried_data = self._discover_pattern_combinations(
             data,
             field_scores,
             max_fields,
             max_combinations,
-            min_concentration,
+            min_percentage,
             **kwargs,
         )
 
         top_patterns = self._rank_and_deduplicate_patterns(all_patterns)
 
-        return {
-            "top_patterns": top_patterns[:20],  # Top 20 patterns
-            "field_ranking": field_scores,
-            "combinations_tried": combinations_tried,
-            "statistics": self._calculate_discovery_statistics(
-                data, available_fields, combinations_tried, top_patterns
-            ),
-            "fields_analyzed": available_fields,
-        }
+        # Convert field_scores tuples to FieldRanking dataclasses
+        field_ranking = [
+            FieldRanking(field=field, score=score) for field, score in field_scores
+        ]
 
-    def _build_empty_discovery_result(self) -> Dict[str, Any]:
+        # Convert combinations_tried dictionaries to CombinationTried dataclasses
+        combinations_tried = [
+            CombinationTried(
+                fields=combo["fields"], patterns_found=combo["patterns_found"]
+            )
+            for combo in combinations_tried_data
+        ]
+
+        # Create DiscoveryStatistics dataclass
+        statistics = DiscoveryStatistics(
+            total_records=len(data),
+            fields_analyzed=len(available_fields),
+            combinations_tried=len(combinations_tried),
+            patterns_discovered=len(top_patterns[:20]),
+            best_concentration=max([p.percentage for p in top_patterns[:20]])
+            if top_patterns
+            else 0,
+        )
+
+        return DiscoverOutput(
+            top_patterns=top_patterns[:20],  # Top 20 patterns
+            field_ranking=field_ranking,
+            combinations_tried=combinations_tried,
+            statistics=statistics,
+            fields_analyzed=available_fields,
+        )
+
+    def _build_empty_discovery_result(self) -> DiscoverOutput:
         """Build empty discovery result for cases with no data."""
-        return {
-            "top_patterns": [],
-            "field_ranking": [],
-            "combinations_tried": [],
-            "statistics": {
-                "total_records": 0,
-                "fields_analyzed": 0,
-                "combinations_tried": 0,
-                "patterns_discovered": 0,
-                "best_concentration": 0,
-            },
-            "fields_analyzed": [],
-        }
+        statistics = DiscoveryStatistics(
+            total_records=0,
+            fields_analyzed=0,
+            combinations_tried=0,
+            patterns_discovered=0,
+            best_concentration=0,
+        )
+
+        return DiscoverOutput(
+            top_patterns=[],
+            field_ranking=[],
+            combinations_tried=[],
+            statistics=statistics,
+            fields_analyzed=[],
+        )
 
     def _detect_categorical_fields(self, data: List[Dict[str, Any]]) -> List[str]:
         """Detect fields suitable for categorical analysis.
@@ -176,7 +206,7 @@ class Discovery(Base):
                 patterns = pattern_finder.execute(
                     data, [field], min_percentage=5.0, **kwargs
                 )
-                score = self._calculate_field_score(patterns)
+                score = self._calculate_field_score(patterns.patterns)
                 field_scores.append((field, score))
             except Exception:
                 # Skip problematic fields
@@ -213,7 +243,7 @@ class Discovery(Base):
         field_scores: List[Tuple[str, float]],
         max_fields: int,
         max_combinations: int,
-        min_concentration: float,
+        min_percentage: float,
         **kwargs,
     ) -> Tuple[List[Pattern], List[Dict[str, Any]]]:
         """Discover patterns using different field combinations.
@@ -223,7 +253,7 @@ class Discovery(Base):
             field_scores: Scored fields
             max_fields: Maximum fields to combine
             max_combinations: Maximum combinations to try
-            min_concentration: Minimum concentration threshold
+            min_percentage: Minimum concentration threshold
             **kwargs: Additional options
 
         Returns:
@@ -243,12 +273,12 @@ class Discovery(Base):
         # Try single fields first
         for field in top_fields[:max_fields]:
             patterns = finder.execute(
-                data, [field], min_percentage=min_concentration, **kwargs
+                data, [field], min_percentage=min_percentage, **kwargs
             )
             if patterns:
-                all_patterns.extend(patterns)
+                all_patterns.extend(patterns.patterns)
                 combinations_tried.append(
-                    {"fields": [field], "patterns_found": len(patterns)}
+                    {"fields": [field], "patterns_found": len(patterns.patterns)}
                 )
 
         # Try field combinations (2-field, 3-field, etc.)
@@ -257,12 +287,15 @@ class Discovery(Base):
 
             for fields_combo in field_combinations[:max_combinations]:
                 patterns = finder.execute(
-                    data, list(fields_combo), min_percentage=min_concentration, **kwargs
+                    data, list(fields_combo), min_percentage=min_percentage, **kwargs
                 )
                 if patterns:
-                    all_patterns.extend(patterns)
+                    all_patterns.extend(patterns.patterns)
                     combinations_tried.append(
-                        {"fields": list(fields_combo), "patterns_found": len(patterns)}
+                        {
+                            "fields": list(fields_combo),
+                            "patterns_found": len(patterns.patterns),
+                        }
                     )
 
         return all_patterns, combinations_tried

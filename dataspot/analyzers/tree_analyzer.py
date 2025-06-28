@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
+from ..models.tree import TreeNode, TreeOutput, TreeStatistics
 from .base import Base
 from .filters import PatternFilter, TreeFilter
 from .pattern_extractor import PatternExtractor, TreeBuilder
@@ -20,7 +21,7 @@ class Tree(Base):
         fields: List[str],
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> TreeOutput:
         """Build and return hierarchical tree structure in JSON format.
 
         Args:
@@ -30,7 +31,7 @@ class Tree(Base):
             **kwargs: Tree building and filtering options
 
         Returns:
-            Dictionary representing the hierarchical tree structure
+            TreeOutput dataclass representing the hierarchical tree structure
 
         """
         # Validate input
@@ -42,14 +43,22 @@ class Tree(Base):
         # Get top parameter and build empty tree if no data
         top = kwargs.get("top", 5)
         if not filtered_data:
-            empty_tree = self._build_empty_tree(top)
-            empty_tree["statistics"] = {
-                "total_records": len(data),
-                "filtered_records": 0,
-                "patterns_found": 0,
-            }
-            empty_tree["fields_analyzed"] = fields
-            return empty_tree
+            empty_statistics = TreeStatistics(
+                total_records=len(data),
+                filtered_records=0,
+                patterns_found=0,
+                fields_analyzed=len(fields),
+            )
+            return TreeOutput(
+                name="root",
+                children=[],
+                value=0,
+                percentage=0.0,
+                node=0,
+                top=top,
+                statistics=empty_statistics,
+                fields_analyzed=fields,
+            )
 
         # Build internal tree structure
         internal_tree = self._build_tree(filtered_data, fields)
@@ -65,16 +74,56 @@ class Tree(Base):
         # Build and return clean JSON tree
         tree_result = TreeBuilder(filtered_patterns, total_records, top).build()
 
-        # Add consistent statistics
-        tree_result["statistics"] = {
-            "total_records": len(data),
-            "filtered_records": len(filtered_data),
-            "patterns_found": len(filtered_patterns),
-            "fields_analyzed": len(fields),
-        }
-        tree_result["fields_analyzed"] = fields
+        # Convert tree result to TreeOutput
+        children = self._convert_tree_children(tree_result.get("children", []))
 
-        return tree_result
+        statistics = TreeStatistics(
+            total_records=len(data),
+            filtered_records=len(filtered_data),
+            patterns_found=len(filtered_patterns),
+            fields_analyzed=len(fields),
+        )
+
+        return TreeOutput(
+            name=tree_result.get("name", "root"),
+            children=children,
+            value=tree_result.get("value", 0),
+            percentage=tree_result.get("percentage", 0.0),
+            node=tree_result.get("node", 0),
+            top=top,
+            statistics=statistics,
+            fields_analyzed=fields,
+        )
+
+    def _convert_tree_children(
+        self, children_data: List[Dict[str, Any]]
+    ) -> List[TreeNode]:
+        """Recursively convert tree children dictionaries to TreeNode dataclasses.
+
+        Args:
+            children_data: List of child node dictionaries
+
+        Returns:
+            List of TreeNode dataclasses
+
+        """
+        tree_nodes = []
+        for child in children_data:
+            # Recursively convert children
+            child_children = None
+            if "children" in child and child["children"]:
+                child_children = self._convert_tree_children(child["children"])
+
+            node = TreeNode(
+                name=child.get("name", ""),
+                value=child.get("value", 0),
+                percentage=child.get("percentage", 0.0),
+                node=child.get("node", 0),
+                children=child_children,
+            )
+            tree_nodes.append(node)
+
+        return tree_nodes
 
     def _build_empty_tree(self, top: int) -> Dict[str, Any]:
         """Build empty tree structure for cases with no data.

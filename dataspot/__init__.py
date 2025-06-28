@@ -16,7 +16,7 @@ from dataspot.exceptions import (
     QueryError,
     ValidationError,
 )
-from dataspot.models import Pattern
+from dataspot.models.pattern import Pattern
 
 
 # Quick functions for easy usage

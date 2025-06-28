@@ -25,10 +25,10 @@ class TestEmailPreprocessing:
         ]
 
         patterns = self.dataspot.find(email_data, ["email", "department"])
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find email patterns with extracted words
-        email_patterns = [p for p in patterns if "email=" in p.path]
+        email_patterns = [p for p in patterns.patterns if "email=" in p.path]
         assert len(email_patterns) > 0
 
     def test_email_local_part_extraction(self):
@@ -72,14 +72,14 @@ class TestEmailPreprocessing:
         ]
 
         patterns = self.dataspot.find(numeric_emails, ["email", "type"])
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find patterns for valid email
-        valid_email_patterns = [p for p in patterns if "email=valid" in p.path]
+        valid_email_patterns = [p for p in patterns.patterns if "email=valid" in p.path]
         assert len(valid_email_patterns) > 0
 
         # Should find type patterns
-        type_patterns = [p for p in patterns if "type=" in p.path]
+        type_patterns = [p for p in patterns.patterns if "type=" in p.path]
         assert len(type_patterns) > 0
 
     def test_malformed_emails_no_at_symbol(self):
@@ -103,10 +103,10 @@ class TestEmailPreprocessing:
         ]
 
         patterns = self.dataspot.find(email_pattern_data, ["email_pattern", "type"])
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should process email_pattern field the same way as email field
-        email_patterns = [p for p in patterns if "email_pattern=" in p.path]
+        email_patterns = [p for p in patterns.patterns if "email_pattern=" in p.path]
         assert len(email_patterns) > 0
 
     def test_email_field_priority(self):
@@ -278,16 +278,16 @@ class TestEmailIntegrationWithPatterns:
         ]
 
         patterns = self.dataspot.find(email_data, ["email", "department"])
-        assert len(patterns) > 0
+        assert len(patterns.patterns) > 0
 
         # Should find patterns for individual email parts
-        john_patterns = [p for p in patterns if "email=john" in p.path]
+        john_patterns = [p for p in patterns.patterns if "email=john" in p.path]
         assert len(john_patterns) > 0
 
-        doe_patterns = [p for p in patterns if "email=doe" in p.path]
+        doe_patterns = [p for p in patterns.patterns if "email=doe" in p.path]
         assert len(doe_patterns) > 0
 
-        admin_patterns = [p for p in patterns if "email=admin" in p.path]
+        admin_patterns = [p for p in patterns.patterns if "email=admin" in p.path]
         assert len(admin_patterns) > 0
 
     def test_email_with_pattern_filtering(self):
@@ -306,7 +306,9 @@ class TestEmailIntegrationWithPatterns:
 
         # Should find high-percentage patterns
         admin_patterns = [
-            p for p in patterns if "email=admin" in p.path and p.percentage >= 50
+            p
+            for p in patterns.patterns
+            if "email=admin" in p.path and p.percentage >= 50
         ]
         assert len(admin_patterns) > 0
 
@@ -318,8 +320,8 @@ class TestEmailIntegrationWithPatterns:
                 {"email": f"user{i % 10}.test@domain.com", "category": f"cat_{i % 5}"}
             )
 
-        patterns = self.dataspot.find(large_data, ["email", "category"])
+        result = self.dataspot.find(large_data, ["email", "category"])
 
         # Should complete efficiently and find patterns
-        assert len(patterns) > 0
-        assert isinstance(patterns, list)
+        assert len(result.patterns) > 0
+        assert result.total_records == 100

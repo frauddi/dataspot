@@ -3,7 +3,7 @@
 import re
 from typing import Any, Dict, List
 
-from ..models import Pattern
+from ..models.pattern import Pattern
 
 
 class PatternFilter:

@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from ..models import Pattern
+from ..models.compare import ChangeItem, CompareOutput, ComparisonStatistics
 from .base import Base
 from .stats import Stats
 
@@ -24,7 +24,7 @@ class Compare(Base):
         change_threshold: float = 0.15,
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> CompareOutput:
         """Compare current data against baseline to detect changes with advanced analytics.
 
         Args:
@@ -37,7 +37,7 @@ class Compare(Base):
             **kwargs: Additional filtering options
 
         Returns:
-            Dictionary with comprehensive comparison results, changes, and alerts
+            CompareOutput dataclass with comprehensive comparison results, changes, and alerts
 
         """
         # Validate input data
@@ -54,31 +54,81 @@ class Compare(Base):
         baseline_patterns = self._get_patterns(baseline_data, fields, **kwargs)
 
         # Compare patterns and detect changes
-        changes = self._compare_patterns(
+        changes_data = self._compare_patterns(
             current_patterns,
             baseline_patterns,
             statistical_significance=statistical_significance,
             change_threshold=change_threshold,
         )
 
+        # Convert changes to ChangeItem dataclasses
+        changes = [self._dict_to_change_item(change) for change in changes_data]
+
         # Categorize patterns
-        categorized_patterns = self._categorize_patterns(changes)
+        categorized_patterns = self._categorize_patterns(changes_data)
 
-        result = {
-            "changes": changes,
-            **categorized_patterns,
-            "statistics": {
-                "current_total": len(current_data),
-                "baseline_total": len(baseline_data),
-                "patterns_compared": len(changes),
-                "significant_changes": len([c for c in changes if c["is_significant"]]),
-            },
-            "fields_analyzed": fields,
-            "change_threshold": change_threshold,
-            "statistical_significance": statistical_significance,
-        }
+        # Convert categorized patterns to ChangeItem dataclasses
+        stable_patterns = [
+            self._dict_to_change_item(item)
+            for item in categorized_patterns["stable_patterns"]
+        ]
+        new_patterns = [
+            self._dict_to_change_item(item)
+            for item in categorized_patterns["new_patterns"]
+        ]
+        disappeared_patterns = [
+            self._dict_to_change_item(item)
+            for item in categorized_patterns["disappeared_patterns"]
+        ]
+        increased_patterns = [
+            self._dict_to_change_item(item)
+            for item in categorized_patterns["increased_patterns"]
+        ]
+        decreased_patterns = [
+            self._dict_to_change_item(item)
+            for item in categorized_patterns["decreased_patterns"]
+        ]
 
-        return result
+        # Create ComparisonStatistics dataclass
+        statistics = ComparisonStatistics(
+            current_total=len(current_data),
+            baseline_total=len(baseline_data),
+            patterns_compared=len(changes),
+            significant_changes=len([c for c in changes_data if c["is_significant"]]),
+        )
+
+        return CompareOutput(
+            changes=changes,
+            stable_patterns=stable_patterns,
+            new_patterns=new_patterns,
+            disappeared_patterns=disappeared_patterns,
+            increased_patterns=increased_patterns,
+            decreased_patterns=decreased_patterns,
+            statistics=statistics,
+            fields_analyzed=fields,
+            change_threshold=change_threshold,
+            statistical_significance=statistical_significance,
+        )
+
+    def _dict_to_change_item(self, change_dict: Dict[str, Any]) -> ChangeItem:
+        """Convert a change dictionary to ChangeItem dataclass."""
+        return ChangeItem(
+            path=change_dict["path"],
+            current_count=change_dict["current_count"],
+            baseline_count=change_dict["baseline_count"],
+            count_change=change_dict["count_change"],
+            count_change_percentage=change_dict["count_change_percentage"],
+            relative_change=change_dict["relative_change"],
+            current_percentage=change_dict["current_percentage"],
+            baseline_percentage=change_dict["baseline_percentage"],
+            percentage_change=change_dict["percentage_change"],
+            status=change_dict["status"],
+            is_new=change_dict["is_new"],
+            is_disappeared=change_dict["is_disappeared"],
+            is_significant=change_dict["is_significant"],
+            depth=change_dict["depth"],
+            statistical_significance=change_dict["statistical_significance"],
+        )
 
     def _get_patterns(
         self, data: List[Dict[str, Any]], fields: List[str], **kwargs
@@ -89,11 +139,11 @@ class Compare(Base):
         finder = Finder()
         finder.preprocessors = self.preprocessors
 
-        patterns: List[Pattern] = finder.execute(data, fields, **kwargs)
+        patterns = finder.execute(data, fields, **kwargs)
 
         # Convert to dictionary for easier comparison
         pattern_dict = {}
-        for pattern in patterns:
+        for pattern in patterns.patterns:
             pattern_dict[pattern.path] = {
                 "count": pattern.count,
                 "percentage": pattern.percentage,

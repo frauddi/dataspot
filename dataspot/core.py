@@ -2,8 +2,12 @@
 
 from typing import Any, Callable, Dict, List, Optional
 
-from .analyzers import Analyzer, Base, Compare, Discovery, Finder, Tree
-from .models import Pattern
+from .analyzers import Analyzer, Base, Compare, Discovery, Tree
+from .models.analyzer import AnalyzeOutput
+from .models.compare import CompareOutput
+from .models.discovery import DiscoverOutput
+from .models.finder import FindOutput
+from .models.tree import TreeOutput
 
 
 class Dataspot:
@@ -29,29 +33,47 @@ class Dataspot:
         fields: List[str],
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> List[Pattern]:
+    ) -> FindOutput:
         """Find concentration patterns in data.
 
+        This method discovers data concentration patterns across hierarchical field combinations.
+        It identifies where data naturally clusters and provides insights into distribution patterns.
+
         Args:
-            data: List of records (dictionaries)
-            fields: List of field names to analyze hierarchically
-            query: Optional filters to apply to data
-            **kwargs: Additional filtering options
-                - min_percentage: Minimum percentage for a pattern to be included
-                - max_percentage: Maximum percentage for a pattern to be included
-                - min_count: Minimum count for a pattern to be included
-                - max_count: Maximum count for a pattern to be included
-                - min_depth: Minimum depth for a pattern to be included
-                - max_depth: Maximum depth to analyze
-                - contains: Pattern path must contain this text
-                - exclude: Pattern path must NOT contain these texts (string or list)
-                - regex: Pattern path must match this regex
-                - limit: Maximum number of patterns to return
+            data: List of records (dictionaries) to analyze
+            fields: List of field names to analyze hierarchically (e.g., ['country', 'city', 'device'])
+            query: Optional filters to apply to data before analysis
+                Example: {'status': 'active', 'amount': {'$gt': 100}}
+            **kwargs: Additional filtering options:
+                - min_percentage (float): Minimum concentration threshold (default: 1.0)
+                - min_count (int): Minimum record count per pattern
+                - max_count (int): Maximum record count per pattern
+                - limit (int): Maximum number of patterns to return
 
         Returns:
-            List of Pattern objects sorted by percentage
+            FindOutput dataclass containing:
+                - patterns: List of Pattern objects with concentration data
+                - total_records: Number of records analyzed
+                - total_patterns: Number of patterns found
+
+        Example:
+            Basic pattern finding:
+            >>> patterns = ds.find(transactions, ['country', 'payment_method'])
+            >>> print(f"Found {patterns.total_patterns} patterns in {patterns.total_records} records")
+            >>> top_pattern = patterns.patterns[0]
+            >>> print(f"Top pattern: {top_pattern.path} ({top_pattern.percentage}%)")
+
+            Fraud detection example:
+            >>> suspicious_patterns = ds.find(
+            ...     fraud_data,
+            ...     ['ip_country', 'device_type', 'payment_method'],
+            ...     query={'risk_score': {'$gt': 0.7}},
+            ...     min_percentage=5.0
+            ... )
 
         """
+        from .analyzers.finder import Finder
+
         finder = Finder()
         finder.preprocessors = self._base.preprocessors
         return finder.execute(data, fields, query, **kwargs)
@@ -62,7 +84,7 @@ class Dataspot:
         fields: List[str],
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> AnalyzeOutput:
         """Analyze data and return comprehensive insights.
 
         Returns:
@@ -79,7 +101,7 @@ class Dataspot:
         fields: List[str],
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> TreeOutput:
         """Build and return hierarchical tree structure in JSON format.
 
         Args:
@@ -136,10 +158,10 @@ class Dataspot:
         data: List[Dict[str, Any]],
         max_fields: int = 3,
         max_combinations: int = 10,
-        min_concentration: float = 10.0,
+        min_percentage: float = 10.0,
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> DiscoverOutput:
         """Automatically discover the most interesting concentration patterns.
 
         This method analyzes all available fields and automatically finds
@@ -149,7 +171,7 @@ class Dataspot:
             data: List of records (dictionaries)
             max_fields: Maximum number of fields to combine (default: 3)
             max_combinations: Maximum combinations to try (default: 10)
-            min_concentration: Minimum concentration to consider (default: 10%)
+            min_percentage: Minimum concentration to consider (default: 10%)
             query: Optional filters to apply to data
             **kwargs: Additional filtering options (same as find method)
 
@@ -165,7 +187,7 @@ class Dataspot:
         discovery = Discovery()
         discovery.preprocessors = self._base.preprocessors
         return discovery.execute(
-            data, max_fields, max_combinations, min_concentration, query, **kwargs
+            data, max_fields, max_combinations, min_percentage, query, **kwargs
         )
 
     def compare(
@@ -177,7 +199,7 @@ class Dataspot:
         change_threshold: float = 0.15,
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> CompareOutput:
         """Compare datasets to detect changes and anomalies between periods.
 
         Args:

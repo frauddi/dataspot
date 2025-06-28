@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from ..models import Pattern
+from ..models.finder import FindOutput
 from .base import Base
 from .filters import PatternFilter
 from .pattern_extractor import PatternExtractor
@@ -21,7 +21,7 @@ class Finder(Base):
         fields: List[str],
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> List[Pattern]:
+    ) -> FindOutput:
         """Find concentration patterns in data.
 
         Args:
@@ -31,22 +31,34 @@ class Finder(Base):
             **kwargs: Additional filtering options
 
         Returns:
-            List of Pattern objects sorted by percentage
+            FindOutput dataclass with patterns and metadata
 
         """
         self._validate_data(data)
 
         if not fields:
-            return []
+            return FindOutput(
+                patterns=[],
+                total_records=len(data),
+                total_patterns=0,
+            )
 
         filtered_data = self._filter_data_by_query(data, query)
 
         if not filtered_data:
-            return []
+            return FindOutput(
+                patterns=[],
+                total_records=len(data),
+                total_patterns=0,
+            )
 
         tree = self._build_tree(filtered_data, fields)
 
         patterns = PatternExtractor.from_tree(tree, len(filtered_data))
         filtered_patterns = PatternFilter(patterns).apply_all(**kwargs)
 
-        return filtered_patterns
+        return FindOutput(
+            patterns=filtered_patterns,
+            total_records=len(filtered_data),
+            total_patterns=len(filtered_patterns),
+        )

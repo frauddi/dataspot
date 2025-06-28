@@ -9,6 +9,7 @@ import pytest
 from dataspot.analyzers.finder import Finder
 from dataspot.exceptions import DataspotError
 from dataspot.models import Pattern
+from dataspot.models.finder import FindOutput
 
 
 class TestFinderCore:
@@ -28,16 +29,20 @@ class TestFinderCore:
         """Test execute method with empty data."""
         result = self.finder.execute([], ["field1", "field2"])
 
-        assert isinstance(result, list)
-        assert len(result) == 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) == 0
+        assert result.total_records == 0
+        assert result.total_patterns == 0
 
     def test_execute_with_empty_fields(self):
         """Test execute method with empty fields list."""
         data = [{"a": 1, "b": 2}]
         result = self.finder.execute(data, [])
 
-        assert isinstance(result, list)
-        assert len(result) == 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) == 0
+        assert result.total_records == 1
+        assert result.total_patterns == 0
 
     def test_execute_with_invalid_data(self):
         """Test execute method with invalid data."""
@@ -54,12 +59,14 @@ class TestFinderCore:
 
         result = self.finder.execute(data, ["country", "device"])
 
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert all(isinstance(pattern, Pattern) for pattern in result)
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) > 0
+        assert result.total_records == 3
+        assert result.total_patterns == len(result.patterns)
+        assert all(isinstance(pattern, Pattern) for pattern in result.patterns)
 
         # Check that patterns are sorted by percentage (descending)
-        percentages = [p.percentage for p in result]
+        percentages = [p.percentage for p in result.patterns]
         assert percentages == sorted(percentages, reverse=True)
 
     def test_execute_with_query_filter(self):
@@ -74,12 +81,13 @@ class TestFinderCore:
         query = {"active": True}
         result = self.finder.execute(data, ["country", "device"], query=query)
 
-        assert isinstance(result, list)
-        assert len(result) > 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) > 0
+        assert result.total_records == 2  # Only 2 records pass the filter
 
         # All patterns should be from filtered data (only active=True records)
         # This should result in 2 records being analyzed
-        for pattern in result:
+        for pattern in result.patterns:
             assert pattern.count <= 2  # Max count should be 2 (filtered records)
 
     def test_execute_with_kwargs_filtering(self):
@@ -94,8 +102,10 @@ class TestFinderCore:
         # Filter to only patterns with at least 50% concentration
         result = self.finder.execute(data, ["country", "device"], min_percentage=50)
 
-        assert isinstance(result, list)
-        assert all(p.percentage >= 50 for p in result)
+        assert isinstance(result, FindOutput)
+        assert all(p.percentage >= 50 for p in result.patterns)
+        assert result.total_records == 4
+        assert result.total_patterns == len(result.patterns)
 
     def test_execute_with_limit(self):
         """Test execute method with limit parameter."""
@@ -108,8 +118,10 @@ class TestFinderCore:
 
         result = self.finder.execute(data, ["country", "device"], limit=2)
 
-        assert isinstance(result, list)
-        assert len(result) <= 2
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) <= 2
+        assert result.total_records == 4
+        assert result.total_patterns == len(result.patterns)
 
 
 class TestFinderIntegration:
@@ -130,11 +142,13 @@ class TestFinderIntegration:
         # This tests the integration with _build_tree
         result = self.finder.execute(data, ["a", "b"])
 
-        assert len(result) > 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) > 0
+        assert result.total_records == 3
 
         # Check that hierarchical patterns are found
-        depth_1_patterns = [p for p in result if p.depth == 1]
-        depth_2_patterns = [p for p in result if p.depth == 2]
+        depth_1_patterns = [p for p in result.patterns if p.depth == 1]
+        depth_2_patterns = [p for p in result.patterns if p.depth == 2]
 
         assert len(depth_1_patterns) > 0
         assert len(depth_2_patterns) > 0
@@ -150,10 +164,12 @@ class TestFinderIntegration:
         result = self.finder.execute(data, ["x", "y"])
 
         # Check that pattern extraction works correctly
-        assert len(result) > 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) > 0
+        assert result.total_records == 3
 
         # Verify pattern properties are correctly extracted
-        for pattern in result:
+        for pattern in result.patterns:
             assert hasattr(pattern, "path")
             assert hasattr(pattern, "count")
             assert hasattr(pattern, "percentage")
@@ -179,9 +195,13 @@ class TestFinderIntegration:
             data, ["category", "type"], min_percentage=30
         )
 
-        assert all(p.count >= 1 for p in result_min_count)
-        assert all(p.count <= 2 for p in result_max_count)
-        assert all(p.percentage >= 30 for p in result_min_percentage)
+        assert isinstance(result_min_count, FindOutput)
+        assert isinstance(result_max_count, FindOutput)
+        assert isinstance(result_min_percentage, FindOutput)
+
+        assert all(p.count >= 1 for p in result_min_count.patterns)
+        assert all(p.count <= 2 for p in result_max_count.patterns)
+        assert all(p.percentage >= 30 for p in result_min_percentage.patterns)
 
     def test_preprocessor_integration(self):
         """Test that Finder correctly uses preprocessors."""
@@ -192,13 +212,16 @@ class TestFinderIntegration:
 
         result = self.finder.execute(data, ["email", "type"])
 
+        assert isinstance(result, FindOutput)
+        assert result.total_records == 2
+
         # Check that email preprocessing was applied
-        email_patterns = [p for p in result if "email=" in p.path]
+        email_patterns = [p for p in result.patterns if "email=" in p.path]
         assert len(email_patterns) > 0
 
         # Should find patterns with individual email parts
-        john_patterns = [p for p in result if "email=john" in p.path]
-        doe_patterns = [p for p in result if "email=doe" in p.path]
+        john_patterns = [p for p in result.patterns if "email=john" in p.path]
+        doe_patterns = [p for p in result.patterns if "email=doe" in p.path]
 
         assert len(john_patterns) > 0
         assert len(doe_patterns) > 0
@@ -221,11 +244,11 @@ class TestFinderEdgeCases:
 
         result = self.finder.execute(data, ["field1", "field2"])
 
-        assert isinstance(result, list)
-        assert len(result) > 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) > 0
 
         # Should handle None values gracefully
-        for pattern in result:
+        for pattern in result.patterns:
             assert isinstance(pattern, Pattern)
 
     def test_execute_with_mixed_types(self):
@@ -238,7 +261,7 @@ class TestFinderEdgeCases:
 
         result = self.finder.execute(data, ["field1", "field2"])
 
-        assert isinstance(result, list)
+        assert isinstance(result, FindOutput)
         # Should handle mixed types without crashing
 
     def test_execute_with_large_dataset(self):
@@ -250,8 +273,8 @@ class TestFinderEdgeCases:
 
         result = self.finder.execute(data, ["category", "value"])
 
-        assert isinstance(result, list)
-        assert len(result) > 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) > 0
 
         # Performance check - should complete reasonably quickly
         # and not cause memory issues
@@ -266,11 +289,11 @@ class TestFinderEdgeCases:
 
         result = self.finder.execute(data, ["país", "categoría"])
 
-        assert isinstance(result, list)
-        assert len(result) > 0
+        assert isinstance(result, FindOutput)
+        assert len(result.patterns) > 0
 
         # Should handle unicode correctly
-        spain_patterns = [p for p in result if "España" in p.path]
+        spain_patterns = [p for p in result.patterns if "España" in p.path]
         assert len(spain_patterns) > 0
 
     def test_execute_with_empty_strings(self):
@@ -283,5 +306,5 @@ class TestFinderEdgeCases:
 
         result = self.finder.execute(data, ["field1", "field2"])
 
-        assert isinstance(result, list)
+        assert isinstance(result, FindOutput)
         # Should handle empty strings gracefully

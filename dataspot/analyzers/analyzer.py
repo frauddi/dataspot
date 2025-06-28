@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
+from ..models.analyzer import AnalyzeOutput, Insights, Statistics
 from .base import Base
 from .finder import Finder
 
@@ -19,7 +20,7 @@ class Analyzer(Base):
         fields: List[str],
         query: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> AnalyzeOutput:
         """Analyze data and return comprehensive insights.
 
         Args:
@@ -29,7 +30,7 @@ class Analyzer(Base):
             **kwargs: Additional filtering options
 
         Returns:
-            Dictionary with patterns, statistics, and insights
+            AnalyzeOutput dataclass with patterns, statistics, and insights
 
         """
         # Validate input
@@ -39,33 +40,46 @@ class Analyzer(Base):
         patterns = Finder().execute(data, fields, query, **kwargs)
 
         # Calculate comprehensive statistics
-        statistics = self._calculate_statistics(data, query)
+        base_statistics = self._calculate_statistics(data, query)
 
         # Analyze field distributions
         field_stats = self._analyze_field_distributions(data, fields)
 
         # Generate insights
-        insights = self._generate_insights(patterns)
+        insights_data = self._generate_insights(patterns.patterns)
 
-        return {
-            "patterns": patterns,
-            "insights": insights,
-            "statistics": {
-                **statistics,
-                "patterns_found": len(patterns),
-                "max_concentration": max([p.percentage for p in patterns])
-                if patterns
-                else 0,
-                "avg_concentration": (
-                    sum([p.percentage for p in patterns]) / len(patterns)
-                    if patterns
-                    else 0
-                ),
-            },
-            "field_stats": field_stats,
-            "top_patterns": patterns[:5] if patterns else [],
-            "fields_analyzed": fields,
-        }
+        # Create Statistics dataclass
+        statistics = Statistics(
+            total_records=base_statistics["total_records"],
+            filtered_records=base_statistics["filtered_records"],
+            filter_ratio=base_statistics["filter_ratio"],
+            patterns_found=len(patterns.patterns),
+            max_concentration=max([p.percentage for p in patterns.patterns])
+            if patterns.patterns
+            else 0,
+            avg_concentration=(
+                sum([p.percentage for p in patterns.patterns]) / len(patterns.patterns)
+                if patterns.patterns
+                else 0
+            ),
+        )
+
+        # Create Insights dataclass
+        insights = Insights(
+            patterns_found=insights_data["patterns_found"],
+            max_concentration=insights_data["max_concentration"],
+            avg_concentration=insights_data["avg_concentration"],
+            concentration_distribution=insights_data["concentration_distribution"],
+        )
+
+        return AnalyzeOutput(
+            patterns=patterns.patterns,
+            statistics=statistics,
+            insights=insights,
+            field_stats=field_stats,
+            top_patterns=patterns.patterns[:5] if patterns.patterns else [],
+            fields_analyzed=fields,
+        )
 
     def _calculate_statistics(
         self, data: List[Dict[str, Any]], query: Optional[Dict[str, Any]]
