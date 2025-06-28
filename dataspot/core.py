@@ -3,7 +3,7 @@
 from typing import Any, Callable, Dict, List, Optional
 
 from .analyzers import Analyzer, Base, Compare, Discovery, Tree
-from .models.analyzer import AnalyzeOutput
+from .models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
 from .models.compare import CompareOutput
 from .models.discovery import DiscoverOutput
 from .models.finder import FindInput, FindOptions, FindOutput
@@ -50,20 +50,22 @@ class Dataspot:
 
     def analyze(
         self,
-        data: List[Dict[str, Any]],
-        fields: List[str],
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: AnalyzeInput,
+        options: AnalyzeOptions,
     ) -> AnalyzeOutput:
         """Analyze data and return comprehensive insights.
 
+        Args:
+            input: AnalyzeInput containing data, fields, and optional query
+            options: AnalyzeOptions containing filtering and display options
+
         Returns:
-            Dictionary with patterns, statistics, and insights
+            AnalyzeOutput dataclass with patterns, statistics, and insights
 
         """
         analyzer = Analyzer()
         analyzer.preprocessors = self._base.preprocessors
-        return analyzer.execute(data, fields, query, **kwargs)
+        return analyzer.execute(input, options)
 
     def tree(
         self,

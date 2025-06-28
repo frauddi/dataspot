@@ -5,7 +5,7 @@ methods and their integration with the underlying analyzer classes.
 """
 
 from dataspot.core import Dataspot
-from dataspot.models.analyzer import AnalyzeOutput
+from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
 from dataspot.models.discovery import DiscoverOutput
 from dataspot.models.finder import FindInput, FindOptions, FindOutput
 from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
@@ -125,7 +125,9 @@ class TestDataspotAnalyze:
 
     def test_analyze_basic(self):
         """Test basic analyze functionality."""
-        result = self.dataspot.analyze(self.test_data, ["country", "device"])
+        analyze_input = AnalyzeInput(data=self.test_data, fields=["country", "device"])
+        analyze_options = AnalyzeOptions()
+        result = self.dataspot.analyze(analyze_input, analyze_options)
 
         # Should return AnalyzeOutput dataclass
         assert isinstance(result, AnalyzeOutput)
@@ -143,11 +145,12 @@ class TestDataspotAnalyze:
     def test_analyze_with_parameters(self):
         """Test analyze with query and kwargs."""
         query = {"country": "US"}
-        kwargs = {"min_percentage": 15}
 
-        result = self.dataspot.analyze(
-            self.test_data, ["device"], query=query, **kwargs
+        analyze_input = AnalyzeInput(
+            data=self.test_data, fields=["device"], query=query
         )
+        analyze_options = AnalyzeOptions(min_percentage=15)
+        result = self.dataspot.analyze(analyze_input, analyze_options)
 
         assert isinstance(result, AnalyzeOutput)
         # Should only analyze US records (filtered by query)
@@ -162,7 +165,9 @@ class TestDataspotAnalyze:
         test_preprocessor = lambda x: x.upper() if isinstance(x, str) else x  # noqa: E731
         self.dataspot.add_preprocessor("country", test_preprocessor)
 
-        result = self.dataspot.analyze(self.test_data, ["country"])
+        analyze_input = AnalyzeInput(data=self.test_data, fields=["country"])
+        analyze_options = AnalyzeOptions()
+        result = self.dataspot.analyze(analyze_input, analyze_options)
 
         # Should apply preprocessor - patterns should have uppercase country values
         for pattern in result.patterns:
@@ -326,7 +331,11 @@ class TestDataspotIntegration:
         find_input = FindInput(data=test_data, fields=["field1"])
         find_options = FindOptions()
         find_result = self.dataspot.find(find_input, find_options)
-        analyze_result = self.dataspot.analyze(test_data, ["field1"])
+
+        analyze_input = AnalyzeInput(data=test_data, fields=["field1"])
+        analyze_options = AnalyzeOptions()
+        analyze_result = self.dataspot.analyze(analyze_input, analyze_options)
+
         tree_input = TreeInput(data=test_data, fields=["field1"])
         tree_options = TreeOptions()
         tree_result = self.dataspot.tree(tree_input, tree_options)
@@ -356,7 +365,10 @@ class TestDataspotIntegration:
         find_input = FindInput(data=test_data, fields=fields)
         find_options = FindOptions()
         find_result = self.dataspot.find(find_input, find_options)
-        analyze_result = self.dataspot.analyze(test_data, fields)
+
+        analyze_input = AnalyzeInput(data=test_data, fields=fields)
+        analyze_options = AnalyzeOptions()
+        analyze_result = self.dataspot.analyze(analyze_input, analyze_options)
 
         # Both should work and return appropriate types
         assert isinstance(find_result, FindOutput)
@@ -391,7 +403,9 @@ class TestDataspotEdgeCases:
 
     def test_single_record_data(self):
         """Test behavior with single record datasets."""
-        result = self.dataspot.analyze([{"field": "value"}], ["field"])
+        analyze_input = AnalyzeInput(data=[{"field": "value"}], fields=["field"])
+        analyze_options = AnalyzeOptions()
+        result = self.dataspot.analyze(analyze_input, analyze_options)
 
         assert isinstance(result, AnalyzeOutput)
         assert len(result.patterns) == 1  # Should find one pattern

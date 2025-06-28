@@ -2,7 +2,13 @@
 
 from typing import Any, Dict, List, Optional
 
-from ..models.analyzer import AnalyzeOutput, Insights, Statistics
+from ..models.analyzer import (
+    AnalyzeInput,
+    AnalyzeOptions,
+    AnalyzeOutput,
+    Insights,
+    Statistics,
+)
 from ..models.finder import FindInput, FindOptions
 from .base import Base
 from .finder import Finder
@@ -17,36 +23,45 @@ class Analyzer(Base):
 
     def execute(
         self,
-        data: List[Dict[str, Any]],
-        fields: List[str],
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: AnalyzeInput,
+        options: AnalyzeOptions,
     ) -> AnalyzeOutput:
         """Analyze data and return comprehensive insights.
 
         Args:
-            data: List of records (dictionaries)
-            fields: List of field names to analyze hierarchically
-            query: Optional filters to apply to data
-            **kwargs: Additional filtering options
+            input: AnalyzeInput containing data, fields, and optional query
+            options: AnalyzeOptions containing filtering and display options
 
         Returns:
             AnalyzeOutput dataclass with patterns, statistics, and insights
 
         """
         # Validate input
-        self._validate_data(data)
+        self._validate_data(input.data)
 
         # Get patterns using Finder
-        find_input = FindInput(data=data, fields=fields, query=query)
-        find_options = FindOptions(**kwargs)
+        find_input = FindInput(data=input.data, fields=input.fields, query=input.query)
+        find_options = FindOptions(
+            min_percentage=options.min_percentage,
+            max_percentage=options.max_percentage,
+            min_count=options.min_count,
+            max_count=options.max_count,
+            min_depth=options.min_depth,
+            max_depth=options.max_depth,
+            contains=options.contains,
+            exclude=options.exclude,
+            regex=options.regex,
+            limit=options.limit,
+            sort_by=options.sort_by,
+            reverse=options.reverse,
+        )
         patterns = Finder().execute(find_input, find_options)
 
         # Calculate comprehensive statistics
-        base_statistics = self._calculate_statistics(data, query)
+        base_statistics = self._calculate_statistics(input.data, input.query)
 
         # Analyze field distributions
-        field_stats = self._analyze_field_distributions(data, fields)
+        field_stats = self._analyze_field_distributions(input.data, input.fields)
 
         # Generate insights
         insights_data = self._generate_insights(patterns.patterns)
@@ -81,7 +96,7 @@ class Analyzer(Base):
             insights=insights,
             field_stats=field_stats,
             top_patterns=patterns.patterns[:5] if patterns.patterns else [],
-            fields_analyzed=fields,
+            fields_analyzed=input.fields,
         )
 
     def _calculate_statistics(

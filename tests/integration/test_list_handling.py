@@ -538,7 +538,7 @@ class TestListValidation:
         """Test handling of potential circular references."""
         # This is more of a safety test
         obj = {"name": "test"}
-        obj["self"] = obj  # Circular reference
+        obj["self"] = obj  # type: ignore # Circular reference
 
         test_data = [
             {"items": [obj], "type": "circular"},

@@ -16,6 +16,7 @@ from dataspot.exceptions import (
     QueryError,
     ValidationError,
 )
+from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
 from dataspot.models.finder import FindInput, FindOptions, FindOutput
 from dataspot.models.pattern import Pattern
 from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
@@ -44,7 +45,11 @@ def find(data, fields, query=None, **kwargs):
 def analyze(data, fields, **kwargs):
     """Quick function to analyze data and get insights."""
     dataspot = Dataspot()
-    return dataspot.analyze(data, fields, **kwargs)
+    analyze_input = AnalyzeInput(
+        data=data, fields=fields, query=kwargs.pop("query", None)
+    )
+    analyze_options = AnalyzeOptions(**kwargs)
+    return dataspot.analyze(analyze_input, analyze_options)
 
 
 def tree(data, fields, query=None, **kwargs):
@@ -83,6 +88,10 @@ __all__ = [
     # Main classes
     "Dataspot",
     "Pattern",
+    # Analyze models
+    "AnalyzeInput",
+    "AnalyzeOptions",
+    "AnalyzeOutput",
     # Find models
     "FindInput",
     "FindOptions",

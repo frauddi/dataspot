@@ -258,7 +258,11 @@ class TestDataspotCore:
 
     def test_analyze_method(self):
         """Test the analyze method returns comprehensive insights."""
-        result = self.dataspot.analyze(self.basic_data, ["a", "b", "c"])
+        from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions
+
+        analyze_input = AnalyzeInput(data=self.basic_data, fields=["a", "b", "c"])
+        analyze_options = AnalyzeOptions()
+        result = self.dataspot.analyze(analyze_input, analyze_options)
 
         # Check structure
         assert result.patterns == result.patterns
@@ -285,7 +289,13 @@ class TestDataspotCore:
 
     def test_field_stats_accuracy(self):
         """Test accuracy of field distribution analysis."""
-        result = self.dataspot.analyze(self.business_data, ["country", "device"])
+        from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions
+
+        analyze_input = AnalyzeInput(
+            data=self.business_data, fields=["country", "device"]
+        )
+        analyze_options = AnalyzeOptions()
+        result = self.dataspot.analyze(analyze_input, analyze_options)
         field_stats = result.field_stats
 
         # Check country field stats

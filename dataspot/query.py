@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Union
 
 from .exceptions import QueryError
+from .models.analyzer import AnalyzeInput, AnalyzeOptions
 from .models.finder import FindInput, FindOptions
 
 
@@ -335,7 +336,7 @@ class QueryBuilder:
             fields: Fields to analyze
 
         Returns:
-            Dictionary with analysis results
+            AnalyzeOutput with analysis results
 
         """
         query = self.build_query()
@@ -344,8 +345,12 @@ class QueryBuilder:
         data_query = {k: v for k, v in query.items() if k in self.data_filters}
         pattern_kwargs = {k: v for k, v in query.items() if k not in self.data_filters}
 
+        # Create structured inputs
+        analyze_input = AnalyzeInput(data=data, fields=fields, query=data_query)
+        analyze_options = AnalyzeOptions(**pattern_kwargs)
+
         # Execute the analysis
-        return self.dataspot.analyze(data, fields, query=data_query, **pattern_kwargs)
+        return self.dataspot.analyze(analyze_input, analyze_options)
 
     def reset(self):
         """Reset all filters and return a clean QueryBuilder.

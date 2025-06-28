@@ -1,9 +1,40 @@
 """Models for analyzer (analyze method) response structures."""
 
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .pattern import Pattern
+
+
+@dataclass
+class AnalyzeInput:
+    """Input model for the analyze() method."""
+
+    data: List[Dict[str, Any]]  # List of records to analyze
+    fields: List[str]  # List of field names to analyze hierarchically
+    query: Optional[Dict[str, Any]] = None  # Optional filters to apply to data
+
+
+@dataclass
+class AnalyzeOptions:
+    """Options model for the analyze() method.
+
+    Contains the same filtering and sorting options as FindOptions
+    since analyze delegates to find internally.
+    """
+
+    min_percentage: float = 1.0  # Minimum concentration percentage threshold
+    max_percentage: Optional[float] = None  # Maximum concentration percentage threshold
+    min_count: Optional[int] = None  # Minimum record count per pattern
+    max_count: Optional[int] = None  # Maximum record count per pattern
+    min_depth: Optional[int] = None  # Minimum depth for patterns to be included
+    max_depth: Optional[int] = None  # Maximum depth for patterns to be included
+    contains: Optional[str] = None  # Pattern path must contain this text
+    exclude: Optional[List[str]] = None  # Pattern path must NOT contain these texts
+    regex: Optional[str] = None  # Pattern path must match this regex pattern
+    limit: Optional[int] = None  # Maximum number of patterns to return
+    sort_by: Optional[str] = None  # Field to sort by ('percentage', 'count', 'depth')
+    reverse: Optional[bool] = None  # Sort order (None=auto, True=desc, False=asc)
 
 
 @dataclass

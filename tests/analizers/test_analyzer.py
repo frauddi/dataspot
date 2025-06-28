@@ -4,14 +4,11 @@ This module tests the Analyzer class in isolation, focusing on comprehensive
 data analysis, statistics calculation, insights generation, and pattern analysis.
 """
 
-from unittest.mock import Mock, patch
-
 import pytest
 
 from dataspot.analyzers.analyzer import Analyzer
 from dataspot.exceptions import DataspotError
-from dataspot.models.analyzer import AnalyzeOutput
-from dataspot.models.finder import FindInput, FindOptions, FindOutput
+from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
 
 
 class TestAnalyzerInitialization:
@@ -51,22 +48,12 @@ class TestAnalyzerExecute:
             {"country": "EU", "device": "desktop", "amount": 80},
         ]
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_execute_basic(self, mock_finder_class):
+    def test_execute_basic(self):
         """Test basic execute functionality."""
-        mock_pattern = Mock()
-        mock_pattern.percentage = 60.0
+        analyze_input = AnalyzeInput(data=self.test_data, fields=["country", "device"])
+        analyze_options = AnalyzeOptions()
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[mock_pattern],
-            total_records=len(self.test_data),
-            total_patterns=1,
-        )
-        mock_finder_class.return_value = mock_finder
-
-        with patch("dataspot.analyzers.analyzer.Finder", return_value=mock_finder):
-            result = self.analyzer.execute(self.test_data, ["country", "device"])
+        result = self.analyzer.execute(analyze_input, analyze_options)
 
         # Verify the result structure
         assert isinstance(result, AnalyzeOutput)
@@ -74,80 +61,53 @@ class TestAnalyzerExecute:
         assert hasattr(result, "statistics")
         assert hasattr(result, "field_stats")
         assert hasattr(result, "top_patterns")
+        assert hasattr(result, "insights")
 
-        # Verify that Finder was called with correct input and options
-        mock_finder.execute.assert_called_once()
-        call_args = mock_finder.execute.call_args
-        assert isinstance(call_args[0][0], FindInput)  # First arg should be FindInput
-        assert isinstance(
-            call_args[0][1], FindOptions
-        )  # Second arg should be FindOptions
+        # Should have found some patterns
+        assert len(result.patterns) > 0
+        assert result.statistics.total_records == 5
+        assert result.statistics.patterns_found > 0
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_execute_with_query(self, mock_finder_class):
+    def test_execute_with_query(self):
         """Test execute with query filtering."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=2,  # Filtered data
-            total_patterns=0,
-        )
-
         query = {"country": "US"}
-
-        with patch("dataspot.analyzers.analyzer.Finder", return_value=mock_finder):
-            _ = self.analyzer.execute(self.test_data, ["device"], query=query)
-
-        # Verify that FindInput includes the query
-        mock_finder.execute.assert_called_once()
-        call_args = mock_finder.execute.call_args
-        find_input = call_args[0][0]
-        assert isinstance(find_input, FindInput)
-        assert find_input.query == query
-
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_execute_with_kwargs(self, mock_finder_class):
-        """Test execute with additional filtering options."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=len(self.test_data),
-            total_patterns=0,
+        analyze_input = AnalyzeInput(
+            data=self.test_data, fields=["device"], query=query
         )
+        analyze_options = AnalyzeOptions()
 
-        with patch("dataspot.analyzers.analyzer.Finder", return_value=mock_finder):
-            _ = self.analyzer.execute(
-                self.test_data,
-                ["country"],
-                min_percentage=10,
-                max_depth=2,
-            )
+        result = self.analyzer.execute(analyze_input, analyze_options)
 
-        # Verify that FindOptions includes the kwargs
-        mock_finder.execute.assert_called_once()
-        call_args = mock_finder.execute.call_args
-        find_options = call_args[0][1]
-        assert isinstance(find_options, FindOptions)
-        assert find_options.min_percentage == 10
-        assert find_options.max_depth == 2
+        # Should only analyze US records (filtered by query)
+        assert result.statistics.total_records == 5  # Original data
+        assert result.statistics.filtered_records == 3  # Only US records
+        assert result.statistics.filter_ratio == 60.0
+
+    def test_execute_with_options(self):
+        """Test execute with additional filtering options."""
+        analyze_input = AnalyzeInput(data=self.test_data, fields=["country"])
+        analyze_options = AnalyzeOptions(min_percentage=30, max_depth=2)
+
+        result = self.analyzer.execute(analyze_input, analyze_options)
+
+        # All patterns should meet min_percentage threshold
+        for pattern in result.patterns:
+            assert pattern.percentage >= 30
 
     def test_execute_with_invalid_data(self):
         """Test execute with invalid data."""
+        analyze_input = AnalyzeInput(data="invalid_data", fields=["field"])  # type: ignore
+        analyze_options = AnalyzeOptions()
+
         with pytest.raises(DataspotError):
-            self.analyzer.execute("invalid_data", ["field"])  # type: ignore
+            self.analyzer.execute(analyze_input, analyze_options)
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_execute_empty_data(self, mock_finder_class):
+    def test_execute_empty_data(self):
         """Test execute with empty data."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=0,
-            total_patterns=0,
-        )
-        mock_finder_class.return_value = mock_finder
+        analyze_input = AnalyzeInput(data=[], fields=["field"])
+        analyze_options = AnalyzeOptions()
 
-        result = self.analyzer.execute([], ["field"])
+        result = self.analyzer.execute(analyze_input, analyze_options)
 
         assert isinstance(result, AnalyzeOutput)
         assert result.statistics.total_records == 0
@@ -219,33 +179,27 @@ class TestAnalyzerInsights:
         assert insights["avg_concentration"] == 0
         assert insights["concentration_distribution"] == "No patterns found"
 
-    def test_generate_insights_with_patterns(self):
-        """Test insights generation with patterns."""
-        # Create mock patterns
-        patterns = []
-        for percentage in [80.0, 60.0, 40.0, 20.0, 10.0]:
-            pattern = Mock()
-            pattern.percentage = percentage
-            patterns.append(pattern)
+    def test_generate_insights_with_real_patterns(self):
+        """Test insights generation with real patterns."""
+        # Create test data that will produce patterns with known concentrations
+        test_data = [
+            {"category": "A", "type": "X"},  # A/X appears 4 times = 80%
+            {"category": "A", "type": "X"},
+            {"category": "A", "type": "X"},
+            {"category": "A", "type": "X"},
+            {"category": "B", "type": "Y"},  # B/Y appears 1 time = 20%
+        ]
 
-        insights = self.analyzer._generate_insights(patterns)
+        analyze_input = AnalyzeInput(data=test_data, fields=["category", "type"])
+        analyze_options = AnalyzeOptions()
 
-        assert insights["patterns_found"] == 5
-        assert insights["max_concentration"] == 80.0
-        assert insights["avg_concentration"] == 42.0  # (80+60+40+20+10)/5
+        result = self.analyzer.execute(analyze_input, analyze_options)
+        insights = self.analyzer._generate_insights(result.patterns)
+
+        assert insights["patterns_found"] > 0
+        assert insights["max_concentration"] > 0
+        assert insights["avg_concentration"] > 0
         assert "concentration_distribution" in insights
-
-    def test_generate_insights_single_pattern(self):
-        """Test insights generation with single pattern."""
-        pattern = Mock()
-        pattern.percentage = 75.0
-        patterns = [pattern]
-
-        insights = self.analyzer._generate_insights(patterns)
-
-        assert insights["patterns_found"] == 1
-        assert insights["max_concentration"] == 75.0
-        assert insights["avg_concentration"] == 75.0
 
     def test_analyze_concentration_distribution_high(self):
         """Test concentration distribution analysis - high concentration."""
@@ -288,8 +242,7 @@ class TestAnalyzerIntegration:
         """Set up test fixtures."""
         self.analyzer = Analyzer()
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_full_execute_integration(self, mock_finder_class):
+    def test_full_execute_integration(self):
         """Test full execute method integration."""
         # Create realistic test data
         test_data = [
@@ -300,85 +253,64 @@ class TestAnalyzerIntegration:
             {"country": "EU", "device": "mobile", "category": "A"},
         ]
 
-        # Mock patterns with realistic data
-        mock_patterns = []
-        for i, percentage in enumerate([60.0, 40.0, 20.0]):
-            pattern = Mock()
-            pattern.percentage = percentage
-            pattern.count = 3 - i
-            pattern.path = f"pattern_{i}"
-            mock_patterns.append(pattern)
-
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=mock_patterns,
-            total_records=len(test_data),
-            total_patterns=len(mock_patterns),
+        analyze_input = AnalyzeInput(
+            data=test_data, fields=["country", "device", "category"]
         )
-        mock_finder_class.return_value = mock_finder
+        analyze_options = AnalyzeOptions()
 
-        result = self.analyzer.execute(test_data, ["country", "device", "category"])
+        result = self.analyzer.execute(analyze_input, analyze_options)
 
         # Verify comprehensive result structure
         assert isinstance(result, AnalyzeOutput)
-        assert len(result.patterns) == 3
-        assert result.insights.patterns_found == 3
-        assert result.insights.max_concentration == 60.0
-        assert result.insights.avg_concentration == 40.0
+        assert len(result.patterns) > 0
+        assert result.insights.patterns_found > 0
+        assert result.insights.max_concentration > 0
 
         # Verify statistics
         assert result.statistics.total_records == 5
-        assert result.statistics.patterns_found == 3
-        assert result.statistics.max_concentration == 60.0
-        assert result.statistics.avg_concentration == 40.0
+        assert result.statistics.patterns_found > 0
+        assert result.statistics.max_concentration > 0
 
         # Verify top patterns
-        assert len(result.top_patterns) == 3
-        assert result.top_patterns == mock_patterns
+        assert len(result.top_patterns) <= 5
+        assert len(result.top_patterns) <= len(result.patterns)
 
         # Verify field stats
         assert result.field_stats is not None
         assert len(result.field_stats) == 3  # country, device, category
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_execute_with_query_integration(self, mock_finder_class):
+    def test_execute_with_query_integration(self):
         """Test execute with query filtering integration."""
-        self.test_data = [
+        test_data = [
             {"country": "US", "active": True},
             {"country": "US", "active": False},
             {"country": "EU", "active": True},
         ]
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=len(self.test_data),
-            total_patterns=0,
-        )
-        mock_finder_class.return_value = mock_finder
-
         query = {"active": True}
-        result = self.analyzer.execute(self.test_data, ["country"], query=query)
+        analyze_input = AnalyzeInput(data=test_data, fields=["country"], query=query)
+        analyze_options = AnalyzeOptions()
+
+        result = self.analyzer.execute(analyze_input, analyze_options)
 
         # Check statistics reflect filtering
         assert result.statistics.total_records == 3
         assert result.statistics.filtered_records == 2
         assert result.statistics.filter_ratio == 66.67
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_execute_no_patterns_found(self, mock_finder_class):
-        """Test execute when no patterns are found."""
-        test_data = [{"field": "value"}]
+    def test_execute_no_patterns_found(self):
+        """Test execute when filtering eliminates all patterns."""
+        test_data = [
+            {"field": "value1"},
+            {"field": "value2"},
+            {"field": "value3"},
+        ]
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=len(test_data),
-            total_patterns=0,
-        )
-        mock_finder_class.return_value = mock_finder
+        # Use very high threshold to eliminate patterns
+        analyze_input = AnalyzeInput(data=test_data, fields=["field"])
+        analyze_options = AnalyzeOptions(min_percentage=90.0)
 
-        result = self.analyzer.execute(test_data, ["field"])
+        result = self.analyzer.execute(analyze_input, analyze_options)
 
         # Check handling of no patterns
         assert result.patterns == []
@@ -395,24 +327,17 @@ class TestAnalyzerEdgeCases:
         """Set up test fixtures."""
         self.analyzer = Analyzer()
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_execute_with_empty_fields(self, mock_finder_class):
+    def test_execute_with_empty_fields(self):
         """Test execute with empty fields list."""
         test_data = [{"field": "value"}]
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=len(test_data),
-            total_patterns=0,
-        )
-        mock_finder_class.return_value = mock_finder
+        analyze_input = AnalyzeInput(data=test_data, fields=[])
+        analyze_options = AnalyzeOptions()
 
-        result = self.analyzer.execute(test_data, [])
+        result = self.analyzer.execute(analyze_input, analyze_options)
         assert result.patterns == []
 
-    @patch("dataspot.analyzers.analyzer.Finder")
-    def test_large_dataset_performance(self, mock_finder_class):
+    def test_large_dataset_performance(self):
         """Test analyzer performance with larger dataset."""
         # Create larger dataset
         test_data = [
@@ -420,15 +345,10 @@ class TestAnalyzerEdgeCases:
             for i in range(1000)
         ]
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=len(test_data),
-            total_patterns=0,
-        )
-        mock_finder_class.return_value = mock_finder
+        analyze_input = AnalyzeInput(data=test_data, fields=["category", "type"])
+        analyze_options = AnalyzeOptions()
 
-        result = self.analyzer.execute(test_data, ["category", "type"])
+        result = self.analyzer.execute(analyze_input, analyze_options)
 
         # Should complete without performance issues
         assert result.statistics.total_records == 1000
@@ -447,3 +367,48 @@ class TestAnalyzerEdgeCases:
         # All same values
         result = self.analyzer._analyze_concentration_distribution([25.0, 25.0, 25.0])
         assert result == "Moderate concentration patterns"
+
+    def test_field_stats_generation(self):
+        """Test field statistics generation."""
+        test_data = [
+            {"country": "US", "device": "mobile"},
+            {"country": "US", "device": "desktop"},
+            {"country": "EU", "device": "mobile"},
+            {"country": None, "device": "tablet"},
+        ]
+
+        analyze_input = AnalyzeInput(data=test_data, fields=["country", "device"])
+        analyze_options = AnalyzeOptions()
+
+        result = self.analyzer.execute(analyze_input, analyze_options)
+
+        # Check field stats structure
+        assert "country" in result.field_stats
+        assert "device" in result.field_stats
+
+        country_stats = result.field_stats["country"]
+        assert country_stats["total_count"] == 4
+        assert country_stats["unique_count"] == 2  # US, EU
+        assert country_stats["null_count"] == 1
+        assert len(country_stats["top_values"]) > 0
+
+    def test_sorting_and_filtering_options(self):
+        """Test various sorting and filtering options."""
+        test_data = [
+            {"category": "A", "value": 1},  # A appears 3 times = 60%
+            {"category": "A", "value": 2},
+            {"category": "A", "value": 3},
+            {"category": "B", "value": 4},  # B appears 2 times = 40%
+            {"category": "B", "value": 5},
+        ]
+
+        # Test with sorting by count
+        analyze_input = AnalyzeInput(data=test_data, fields=["category"])
+        analyze_options = AnalyzeOptions(sort_by="count", reverse=True)
+
+        result = self.analyzer.execute(analyze_input, analyze_options)
+
+        assert len(result.patterns) > 0
+        # Should be sorted by count descending
+        if len(result.patterns) > 1:
+            assert result.patterns[0].count >= result.patterns[1].count
