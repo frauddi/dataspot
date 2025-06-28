@@ -6,7 +6,7 @@ tree building functionality and JSON output structure.
 
 import pytest
 
-from dataspot.analyzers.tree_analyzer import Tree
+from dataspot.analyzers.tree import Tree
 from dataspot.exceptions import DataspotError
 from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
 
