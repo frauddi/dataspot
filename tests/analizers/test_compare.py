@@ -4,6 +4,7 @@ import pytest
 
 from dataspot.analyzers.compare import Compare
 from dataspot.exceptions import DataspotError
+from dataspot.models.compare import CompareInput, CompareOptions
 
 
 class TestCompareInitialization:
@@ -53,81 +54,93 @@ class TestCompareExecute:
 
     def test_execute_basic(self):
         """Test basic execute functionality."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["transaction_type", "country"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Check result structure
-        assert "changes" in result
-        assert "statistics" in result
-        assert "current_total" in result["statistics"]
-        assert "baseline_total" in result["statistics"]
-        assert "fields_analyzed" in result
-        assert "statistical_significance" in result
+        assert result.changes is not None
+        assert result.statistics is not None
+        assert result.statistics.current_total == len(self.current_data)
+        assert result.statistics.baseline_total == len(self.baseline_data)
+        assert result.fields_analyzed == ["transaction_type", "country"]
+        assert result.statistical_significance is False  # Default value
 
-        assert result["statistics"]["current_total"] == len(self.current_data)
-        assert result["statistics"]["baseline_total"] == len(self.baseline_data)
-        assert result["fields_analyzed"] == ["transaction_type", "country"]
+        assert result.statistics.current_total == len(self.current_data)
+        assert result.statistics.baseline_total == len(self.baseline_data)
+        assert result.fields_analyzed == ["transaction_type", "country"]
 
     def test_execute_with_invalid_data(self):
         """Test execute with invalid data."""
-        with pytest.raises(DataspotError):
-            self.compare.execute(
-                current_data="invalid_data",  # type: ignore
-                baseline_data=self.baseline_data,
-                fields=["field"],
-            )
+        compare_input = CompareInput(
+            current_data="invalid_data",  # type: ignore
+            baseline_data=self.baseline_data,
+            fields=["field"],
+        )
+        compare_options = CompareOptions()
 
         with pytest.raises(DataspotError):
-            self.compare.execute(
-                current_data=self.current_data,
-                baseline_data="invalid_data",  # type: ignore
-                fields=["field"],
-            )
+            self.compare.execute(compare_input, compare_options)
+
+        compare_input = CompareInput(
+            current_data=self.current_data,
+            baseline_data="invalid_data",  # type: ignore
+            fields=["field"],
+        )
+
+        with pytest.raises(DataspotError):
+            self.compare.execute(compare_input, compare_options)
 
     def test_execute_with_empty_data(self):
         """Test execute with empty data."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=[],
             baseline_data=self.baseline_data,
             fields=["transaction_type"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
-        assert result["statistics"]["current_total"] == 0
-        assert len(result["changes"]) >= 0
+        assert result.statistics.current_total == 0
+        assert len(result.changes) >= 0
 
     def test_execute_with_query(self):
         """Test execute with query filtering."""
         query = {"country": "US"}
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["transaction_type"],
             query=query,
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should still have proper structure
-        assert "changes" in result
+        assert result.changes is not None
 
     def test_execute_with_statistical_significance(self):
         """Test execute with statistical significance enabled."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["transaction_type", "country"],
-            statistical_significance=True,
         )
+        compare_options = CompareOptions(statistical_significance=True)
+        result = self.compare.execute(compare_input, compare_options)
 
-        assert result["statistical_significance"] is True
+        assert result.statistical_significance is True
 
         # Check that changes with statistical significance have stats
-        for change in result["changes"]:
-            if change["current_count"] > 0 and change["baseline_count"] > 0:
-                assert "statistical_significance" in change
-                if change["statistical_significance"]:
-                    stats = change["statistical_significance"]
+        for change in result.changes:
+            if change.current_count > 0 and change.baseline_count > 0:
+                assert change.statistical_significance is not None
+                if change.statistical_significance:
+                    stats = change.statistical_significance
                     assert "p_value" in stats
                     assert "is_significant" in stats
                     assert "confidence_interval" in stats
@@ -154,15 +167,17 @@ class TestCompareStatusUppercase:
 
     def test_status_values_are_uppercase(self):
         """Test that all status values are returned in uppercase."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["type"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Check that all status values are uppercase
-        for change in result["changes"]:
-            status = change["status"]
+        for change in result.changes:
+            status = change.status
             assert status.isupper(), f"Status '{status}' should be uppercase"
             assert status in [
                 "NEW",
@@ -179,17 +194,19 @@ class TestCompareStatusUppercase:
 
     def test_new_and_disappeared_patterns(self):
         """Test detection of new and disappeared patterns."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["type"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should detect type "C" as NEW
-        type_c_changes = [c for c in result["changes"] if "type=C" in c["path"]]
+        type_c_changes = [c for c in result.changes if "type=C" in c.path]
         assert len(type_c_changes) > 0
-        assert type_c_changes[0]["status"] == "NEW"
-        assert type_c_changes[0]["is_new"] is True
+        assert type_c_changes[0].status == "NEW"
+        assert type_c_changes[0].is_new is True
 
 
 class TestCompareChanges:
@@ -212,21 +229,23 @@ class TestCompareChanges:
             {"category": "electronics", "brand": "samsung"},
         ]
 
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=current_data,
             baseline_data=baseline_data,
             fields=["category", "brand"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should detect books category as new
-        new_patterns = result["new_patterns"]
+        new_patterns = result.new_patterns
         assert len(new_patterns) > 0
 
         books_pattern = next(
-            (p for p in new_patterns if "category=books" in p["path"]), None
+            (p for p in new_patterns if "category=books" in p.path), None
         )
         assert books_pattern is not None
-        assert books_pattern["is_new"] is True
+        assert books_pattern.is_new is True
 
     def test_disappeared_pattern_detection(self):
         """Test detection of disappeared patterns."""
@@ -239,46 +258,48 @@ class TestCompareChanges:
             {"product": "phone", "status": "active"},  # Will disappear
         ]
 
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=current_data,
             baseline_data=baseline_data,
             fields=["product", "status"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should detect phone as disappeared
-        disappeared_patterns = result["disappeared_patterns"]
+        disappeared_patterns = result.disappeared_patterns
         assert len(disappeared_patterns) > 0
 
         phone_pattern = next(
-            (p for p in disappeared_patterns if "product=phone" in p["path"]), None
+            (p for p in disappeared_patterns if "product=phone" in p.path), None
         )
         assert phone_pattern is not None
-        assert phone_pattern["is_disappeared"] is True
+        assert phone_pattern.is_disappeared is True
 
     def test_categorized_patterns_structure(self):
         """Test that patterns are properly categorized."""
         current_data = [{"type": "A"}] * 15 + [{"type": "B"}] * 10 + [{"type": "C"}] * 5
         baseline_data = [{"type": "A"}] * 10 + [{"type": "B"}] * 10
 
-        result = self.compare.execute(
-            current_data=current_data,
-            baseline_data=baseline_data,
-            fields=["type"],
+        compare_input = CompareInput(
+            current_data=current_data, baseline_data=baseline_data, fields=["type"]
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Check categorized patterns
-        assert "stable_patterns" in result
-        assert "new_patterns" in result
-        assert "disappeared_patterns" in result
-        assert "increased_patterns" in result
-        assert "decreased_patterns" in result
+        assert result.stable_patterns is not None
+        assert result.new_patterns is not None
+        assert result.disappeared_patterns is not None
+        assert result.increased_patterns is not None
+        assert result.decreased_patterns is not None
 
         # Each category should be a list
-        assert isinstance(result["stable_patterns"], list)
-        assert isinstance(result["new_patterns"], list)
-        assert isinstance(result["disappeared_patterns"], list)
-        assert isinstance(result["increased_patterns"], list)
-        assert isinstance(result["decreased_patterns"], list)
+        assert isinstance(result.stable_patterns, list)
+        assert isinstance(result.new_patterns, list)
+        assert isinstance(result.disappeared_patterns, list)
+        assert isinstance(result.increased_patterns, list)
+        assert isinstance(result.decreased_patterns, list)
 
 
 class TestCompareEdgeCases:
@@ -295,15 +316,17 @@ class TestCompareEdgeCases:
             {"field1": "value3", "field2": "value4"},
         ]
 
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=identical_data,
             baseline_data=identical_data,
             fields=["field1", "field2"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should have changes but they should all be stable
-        assert len(result["changes"]) > 0
-        stable_changes = [c for c in result["changes"] if c["status"] == "STABLE"]
+        assert len(result.changes) > 0
+        stable_changes = [c for c in result.changes if c.status == "STABLE"]
         assert len(stable_changes) > 0
 
     def test_execute_with_statistical_significance_comprehensive(self):
@@ -312,22 +335,21 @@ class TestCompareEdgeCases:
         current_data = [{"type": "fraud"}] * 100  # High count
         baseline_data = [{"type": "fraud"}] * 50  # Lower count
 
-        result = self.compare.execute(
-            current_data=current_data,
-            baseline_data=baseline_data,
-            fields=["type"],
-            statistical_significance=True,
+        compare_input = CompareInput(
+            current_data=current_data, baseline_data=baseline_data, fields=["type"]
         )
+        compare_options = CompareOptions(statistical_significance=True)
+        result = self.compare.execute(compare_input, compare_options)
 
         # Find the fraud pattern change
-        fraud_changes = [c for c in result["changes"] if "type=fraud" in c["path"]]
+        fraud_changes = [c for c in result.changes if "type=fraud" in c.path]
         assert len(fraud_changes) > 0
 
         fraud_change = fraud_changes[0]
-        assert "statistical_significance" in fraud_change
+        assert fraud_change.statistical_significance is not None
 
-        if fraud_change["statistical_significance"]:
-            stats = fraud_change["statistical_significance"]
+        if fraud_change.statistical_significance:
+            stats = fraud_change.statistical_significance
             # Should have comprehensive statistical analysis
             assert "p_value" in stats
             assert "is_significant" in stats

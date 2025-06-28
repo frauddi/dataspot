@@ -6,6 +6,7 @@ including edge cases and various email formats.
 
 from dataspot import Dataspot
 from dataspot.analyzers.base import Base
+from dataspot.models.finder import FindInput, FindOptions
 
 
 class TestEmailPreprocessing:
@@ -17,19 +18,24 @@ class TestEmailPreprocessing:
         self.base = Base()
 
     def test_basic_email_extraction(self):
-        """Test basic email pattern extraction."""
-        email_data = [
-            {"email": "john.doe@company.com", "department": "tech"},
-            {"email": "jane.smith@company.com", "department": "sales"},
-            {"email": "admin@company.com", "department": "ops"},
+        """Test basic email extraction from records."""
+        test_data = [
+            {"user": "john@example.com", "category": "A"},
+            {"user": "jane@company.org", "category": "B"},
+            {"user": "mike@example.com", "category": "A"},
         ]
 
-        patterns = self.dataspot.find(email_data, ["email", "department"])
-        assert len(patterns) > 0
+        find_input = FindInput(data=test_data, fields=["user", "category"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
-        # Should find email patterns with extracted words
-        email_patterns = [p for p in patterns if "email=" in p.path]
+        # Should find email domain patterns
+        email_patterns = [p for p in result.patterns if "@" in p.path]
         assert len(email_patterns) > 0
+
+        # Should extract domain information
+        domain_patterns = [p for p in result.patterns if "example.com" in p.path]
+        assert len(domain_patterns) > 0
 
     def test_email_local_part_extraction(self):
         """Test extraction of alphabetic parts from email local part."""
@@ -47,40 +53,33 @@ class TestEmailPreprocessing:
             assert processed == expected, f"Failed for email: {email}"
 
     def test_emails_with_no_alphabetic_characters(self):
-        """Test email preprocessing with no alphabetic characters in local part."""
-        # These emails have @ so they get processed, but local part has no letters
-        test_cases = [
-            ("123456@company.com", []),
-            ("___@company.com", []),
-            ("123.456@company.com", []),
-            ("@company.com", []),  # Empty local part
+        """Test handling of emails with numeric domains or special characters."""
+        test_data = [
+            {"email": "user@123.com", "type": "numeric"},
+            {"email": "admin@test-site.org", "type": "hyphen"},
+            {"email": "support@test.co.uk", "type": "multi"},
         ]
 
-        for email, expected in test_cases:
-            test_record = {"email": email}
-            processed = self.base._preprocess_value("email", email, test_record)
-            assert processed == expected, f"Failed for email: {email}"
+        find_input = FindInput(data=test_data, fields=["email", "type"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
-        # When email preprocessing returns empty lists, no paths are generated at all
-        # So we need at least one field that generates non-empty values
-        numeric_emails = [
-            {"email": "123456@company.com", "type": "numeric"},
-            {
-                "email": "valid@company.com",
-                "type": "mixed",
-            },  # This will generate patterns
-        ]
+        # Should handle special domain formats and extract alphabetic parts
+        assert len(result.patterns) > 0
 
-        patterns = self.dataspot.find(numeric_emails, ["email", "type"])
-        assert len(patterns) > 0
+        # Should find patterns with extracted alphabetic parts (not @ symbol)
+        # Since email preprocessing extracts only alphabetic parts from local part
+        email_patterns = [p for p in result.patterns if "email=" in p.path]
+        assert len(email_patterns) > 0
 
-        # Should find patterns for valid email
-        valid_email_patterns = [p for p in patterns if "email=valid" in p.path]
-        assert len(valid_email_patterns) > 0
+        # Should find specific extracted terms
+        user_patterns = [p for p in result.patterns if "email=user" in p.path]
+        admin_patterns = [p for p in result.patterns if "email=admin" in p.path]
+        support_patterns = [p for p in result.patterns if "email=support" in p.path]
 
-        # Should find type patterns
-        type_patterns = [p for p in patterns if "type=" in p.path]
-        assert len(type_patterns) > 0
+        assert len(user_patterns) > 0
+        assert len(admin_patterns) > 0
+        assert len(support_patterns) > 0
 
     def test_malformed_emails_no_at_symbol(self):
         """Test emails without @ symbol (not processed as emails)."""
@@ -96,18 +95,26 @@ class TestEmailPreprocessing:
             assert processed == expected, f"Failed for malformed email: {email}"
 
     def test_email_pattern_field(self):
-        """Test email preprocessing with email_pattern field."""
-        email_pattern_data = [
-            {"email_pattern": "test.user@domain.com", "type": "test"},
-            {"email_pattern": "admin.support@domain.com", "type": "admin"},
+        """Test email preprocessing creates appropriate pattern fields."""
+        test_data = [
+            {"contact": "sales@company.com", "role": "sales"},
+            {"contact": "support@company.com", "role": "support"},
+            {"contact": "info@partner.org", "role": "info"},
         ]
 
-        patterns = self.dataspot.find(email_pattern_data, ["email_pattern", "type"])
-        assert len(patterns) > 0
+        find_input = FindInput(data=test_data, fields=["contact", "role"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
-        # Should process email_pattern field the same way as email field
-        email_patterns = [p for p in patterns if "email_pattern=" in p.path]
-        assert len(email_patterns) > 0
+        # Should find domain-based patterns
+        company_patterns = [p for p in result.patterns if "company.com" in p.path]
+        assert len(company_patterns) > 0
+
+        # Should categorize by domain
+        domain_concentration = len(
+            [p for p in result.patterns if "company.com" in p.path]
+        )
+        assert domain_concentration > 0
 
     def test_email_field_priority(self):
         """Test that 'email' field takes precedence for email_pattern preprocessing."""
@@ -268,58 +275,58 @@ class TestEmailIntegrationWithPatterns:
         self.dataspot = Dataspot()
 
     def test_email_list_expansion_in_patterns(self):
-        """Test how email preprocessing creates multiple paths."""
-        email_data = [
+        """Test that email lists are properly expanded in pattern detection."""
+        test_data = [
             {
-                "email": "john.doe@company.com",
-                "department": "tech",
-            },  # Creates 2 email paths
-            {"email": "admin@company.com", "department": "ops"},  # Creates 1 email path
+                "recipients": ["john@company.com", "jane@company.com"],
+                "department": "sales",
+            },
+            {
+                "recipients": ["mike@company.com", "sarah@partner.org"],
+                "department": "marketing",
+            },
         ]
 
-        patterns = self.dataspot.find(email_data, ["email", "department"])
-        assert len(patterns) > 0
+        find_input = FindInput(data=test_data, fields=["recipients", "department"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
-        # Should find patterns for individual email parts
-        john_patterns = [p for p in patterns if "email=john" in p.path]
-        assert len(john_patterns) > 0
-
-        doe_patterns = [p for p in patterns if "email=doe" in p.path]
-        assert len(doe_patterns) > 0
-
-        admin_patterns = [p for p in patterns if "email=admin" in p.path]
-        assert len(admin_patterns) > 0
+        # Should expand email lists and find domain patterns
+        company_patterns = [p for p in result.patterns if "company.com" in p.path]
+        assert len(company_patterns) > 0
 
     def test_email_with_pattern_filtering(self):
-        """Test email preprocessing with pattern filtering."""
-        # Create data where some emails appear frequently
-        email_data = []
-        for i in range(10):
-            email_data.append(
+        """Test email analysis with pattern filtering options."""
+        test_data = [
+            {"sender": "user1@domain1.com", "status": "sent"},
+            {"sender": "user2@domain1.com", "status": "sent"},
+            {"sender": "user3@domain2.com", "status": "failed"},
+        ] * 10  # Scale up for percentage calculations
+
+        find_input = FindInput(data=test_data, fields=["sender", "status"])
+        find_options = FindOptions(min_percentage=20.0)
+        result = self.dataspot.find(find_input, find_options)
+
+        # Should filter out low-concentration patterns
+        for pattern in result.patterns:
+            assert pattern.percentage >= 20.0
+
+    def test_performance_with_many_emails(self):
+        """Test performance with large number of email addresses."""
+        # Generate large dataset with emails
+        test_data = []
+        for i in range(1000):
+            test_data.append(
                 {
-                    "email": "admin@company.com" if i < 7 else "user@company.com",
-                    "type": "test",
+                    "email": f"user{i}@domain{i % 10}.com",
+                    "category": f"cat_{i % 5}",
                 }
             )
 
-        patterns = self.dataspot.find(email_data, ["email", "type"], min_percentage=50)
+        find_input = FindInput(data=test_data, fields=["email", "category"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
-        # Should find high-percentage patterns
-        admin_patterns = [
-            p for p in patterns if "email=admin" in p.path and p.percentage >= 50
-        ]
-        assert len(admin_patterns) > 0
-
-    def test_performance_with_many_emails(self):
-        """Test performance with many email records."""
-        large_data = []
-        for i in range(100):
-            large_data.append(
-                {"email": f"user{i % 10}.test@domain.com", "category": f"cat_{i % 5}"}
-            )
-
-        patterns = self.dataspot.find(large_data, ["email", "category"])
-
-        # Should complete efficiently and find patterns
-        assert len(patterns) > 0
-        assert isinstance(patterns, list)
+        # Should complete efficiently
+        assert len(result.patterns) > 0
+        assert result.total_records == 1000

@@ -6,7 +6,7 @@ validation, and data integrity.
 
 import pytest
 
-from dataspot.core import Pattern
+from dataspot.models.finder import Pattern
 
 
 class TestPattern:

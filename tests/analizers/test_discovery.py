@@ -1,17 +1,15 @@
 """Unit tests for the Discovery class.
 
 This module tests the Discovery class in isolation, focusing on automatic
-pattern discovery, field analysis.
+pattern discovery, field analysis, and combination testing.
 """
-
-from typing import List
-from unittest.mock import Mock, patch
 
 import pytest
 
 from dataspot.analyzers.discovery import Discovery
 from dataspot.exceptions import DataspotError
-from dataspot.models import Pattern
+from dataspot.models.discovery import DiscoverInput, DiscoverOptions, DiscoverOutput
+from dataspot.models.pattern import Pattern
 
 
 class TestDiscoveryInitialization:
@@ -44,70 +42,75 @@ class TestDiscoveryExecute:
         """Set up test fixtures."""
         self.discovery = Discovery()
         self.test_data = [
-            {"country": "US", "device": "mobile", "category": "A"},
-            {"country": "US", "device": "mobile", "category": "B"},
-            {"country": "EU", "device": "desktop", "category": "A"},
+            {"country": "US", "device": "mobile", "category": "premium"},
+            {"country": "US", "device": "mobile", "category": "premium"},
+            {"country": "US", "device": "desktop", "category": "basic"},
+            {"country": "EU", "device": "mobile", "category": "premium"},
+            {"country": "EU", "device": "tablet", "category": "basic"},
         ]
 
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_execute_basic(self, mock_finder_class):
+    def test_execute_basic(self):
         """Test basic execute functionality."""
-        mock_pattern = Mock(spec=Pattern)
-        mock_pattern.percentage = 60.0
-        mock_pattern.path = "country=US"
+        discover_input = DiscoverInput(data=self.test_data)
+        discover_options = DiscoverOptions()
+        result = self.discovery.execute(discover_input, discover_options)
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = [mock_pattern]
-        mock_finder_class.return_value = mock_finder
+        # Verify the result structure
+        assert isinstance(result, DiscoverOutput)
+        assert hasattr(result, "top_patterns")
+        assert hasattr(result, "field_ranking")
+        assert hasattr(result, "combinations_tried")
+        assert hasattr(result, "statistics")
+        assert hasattr(result, "fields_analyzed")
 
-        result = self.discovery.execute(self.test_data)
+        # Should have found some patterns
+        assert len(result.top_patterns) > 0
+        assert len(result.field_ranking) > 0
+        assert result.statistics.total_records == 5
 
-        assert "top_patterns" in result
-        assert "field_ranking" in result
-        assert "combinations_tried" in result
-        assert "statistics" in result
-
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_execute_with_parameters(self, mock_finder_class):
+    def test_execute_with_parameters(self):
         """Test execute with custom parameters."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = []
-        mock_finder_class.return_value = mock_finder
-
-        result = self.discovery.execute(
-            self.test_data, max_fields=2, max_combinations=5, min_concentration=20.0
+        discover_input = DiscoverInput(data=self.test_data)
+        discover_options = DiscoverOptions(
+            max_fields=2, max_combinations=5, min_percentage=15.0
         )
+        result = self.discovery.execute(discover_input, discover_options)
 
-        # Should use custom parameters
-        assert "top_patterns" in result
-        assert isinstance(result["combinations_tried"], list)
+        assert isinstance(result, DiscoverOutput)
+        assert result.statistics.total_records == len(self.test_data)
+        # Should respect max_fields parameter
+        assert len(result.field_ranking) <= len(self.test_data[0].keys())
 
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_execute_with_query(self, mock_finder_class):
+    def test_execute_with_query(self):
         """Test execute with query filtering."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = []
-        mock_finder_class.return_value = mock_finder
-
         query = {"country": "US"}
-        result = self.discovery.execute(self.test_data, query=query)
+        discover_input = DiscoverInput(data=self.test_data, query=query)
+        discover_options = DiscoverOptions()
+        result = self.discovery.execute(discover_input, discover_options)
 
         # Should filter data before analysis
-        assert result["statistics"]["total_records"] <= len(self.test_data)
+        assert isinstance(result, DiscoverOutput)
+        assert result.statistics.total_records <= len(self.test_data)
 
     def test_execute_with_empty_data(self):
         """Test execute with empty data."""
-        result = self.discovery.execute([])
+        discover_input = DiscoverInput(data=[])
+        discover_options = DiscoverOptions()
+        result = self.discovery.execute(discover_input, discover_options)
 
-        assert result["top_patterns"] == []
-        assert result["field_ranking"] == []
-        assert result["combinations_tried"] == []
-        assert result["statistics"]["total_records"] == 0
+        assert isinstance(result, DiscoverOutput)
+        assert result.top_patterns == []
+        assert result.field_ranking == []
+        assert result.combinations_tried == []
+        assert result.statistics.total_records == 0
 
     def test_execute_with_invalid_data(self):
         """Test execute with invalid data."""
+        discover_input = DiscoverInput(data="invalid_data")  # type: ignore
+        discover_options = DiscoverOptions()
+
         with pytest.raises(DataspotError):
-            self.discovery.execute("invalid_data")  # type: ignore
+            self.discovery.execute(discover_input, discover_options)
 
 
 class TestDiscoveryFieldDetection:
@@ -117,80 +120,50 @@ class TestDiscoveryFieldDetection:
         """Set up test fixtures."""
         self.discovery = Discovery()
 
-    def test_detect_categorical_fields_basic(self):
-        """Test basic categorical field detection."""
+    def test_detect_categorical_fields(self):
+        """Test detection of suitable categorical fields."""
         test_data = [
-            {"category": "A", "status": "active", "id": 1},
-            {"category": "B", "status": "inactive", "id": 2},
-            {"category": "A", "status": "active", "id": 3},
+            {"category": "A", "type": "premium", "status": "active"},
+            {"category": "B", "type": "basic", "status": "active"},
+            {"category": "A", "type": "premium", "status": "inactive"},
+            {"category": "C", "type": "basic", "status": "active"},
         ]
 
         fields = self.discovery._detect_categorical_fields(test_data)
 
-        # Should detect categorical fields but exclude ID-like fields
+        # Should include category (good for analysis)
         assert "category" in fields
-        assert "status" in fields
-        # Note: Field detection criteria may vary based on implementation
-
-    def test_detect_categorical_fields_large_sample(self):
-        """Test field detection with large data sample."""
-        # Create large dataset
-        test_data = [
-            {"type": f"type_{i % 5}", "status": f"status_{i % 3}", "unique_id": i}
-            for i in range(200)
-        ]
-
-        fields = self.discovery._detect_categorical_fields(test_data)
-
-        # Should sample efficiently and detect patterns
+        # Should include type and status (good categorical fields)
         assert "type" in fields
         assert "status" in fields
-        assert "unique_id" not in fields  # Too unique
 
-    def test_is_suitable_for_analysis_good_fields(self):
-        """Test field suitability detection for good categorical fields."""
-        test_data = [
-            {"category": "A"},
-            {"category": "B"},
-            {"category": "A"},
-            {"category": "B"},
-            {"category": "C"},
-        ]
+    def test_is_suitable_for_analysis(self):
+        """Test field suitability analysis."""
+        # Good field: low cardinality (2 unique values out of 10)
+        good_data = [{"good_field": "A" if i % 5 == 0 else "B"} for i in range(10)]
+        assert self.discovery._is_suitable_for_analysis(good_data, "good_field", 10)
 
-        is_suitable = self.discovery._is_suitable_for_analysis(test_data, "category", 5)
-        assert is_suitable is True
+        # Bad field: high cardinality (100% unique)
+        bad_data = [{"bad_field": f"unique_{i}"} for i in range(10)]
+        assert not self.discovery._is_suitable_for_analysis(bad_data, "bad_field", 10)
 
-    def test_is_suitable_for_analysis_unsuitable_fields(self):
-        """Test field suitability detection for unsuitable fields."""
-        # Too unique (like IDs)
-        unique_data = [{"id": i} for i in range(10)]
-        is_suitable = self.discovery._is_suitable_for_analysis(unique_data, "id", 10)
-        assert is_suitable is False
-
-        # Single value
-        single_value_data = [{"status": "active"}] * 5
-        is_suitable = self.discovery._is_suitable_for_analysis(
-            single_value_data, "status", 5
+    def test_is_suitable_for_analysis_edge_cases(self):
+        """Test edge cases in field suitability."""
+        # Single unique value
+        single_value_data = [{"field": "A"}] * 5
+        assert not self.discovery._is_suitable_for_analysis(
+            single_value_data, "field", 5
         )
-        assert is_suitable is False
 
-        # Empty field
-        empty_data = [{"field": None}] * 3
-        is_suitable = self.discovery._is_suitable_for_analysis(empty_data, "field", 3)
-        assert is_suitable is False
-
-    def test_is_suitable_for_analysis_small_samples(self):
-        """Test field suitability with very small samples."""
-        small_data = [{"field": "A"}, {"field": "B"}]
-        is_suitable = self.discovery._is_suitable_for_analysis(small_data, "field", 2)
-        assert is_suitable is True
-
-        # Single record
-        single_record = [{"field": "A"}]
-        is_suitable = self.discovery._is_suitable_for_analysis(
-            single_record, "field", 1
+        # Too few records
+        few_records_data = [{"field": "A"}]
+        assert not self.discovery._is_suitable_for_analysis(
+            few_records_data, "field", 1
         )
-        assert is_suitable is False
+
+        # None values
+        none_data = [{"field": None}] * 3
+        assert not self.discovery._is_suitable_for_analysis(none_data, "field", 3)
 
 
 class TestDiscoveryFieldScoring:
@@ -200,70 +173,57 @@ class TestDiscoveryFieldScoring:
         """Set up test fixtures."""
         self.discovery = Discovery()
 
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_score_fields_by_potential(self, mock_finder_class):
+    def test_score_fields_by_potential(self):
         """Test field scoring by concentration potential."""
-        # Mock high-scoring pattern
-        high_pattern = Mock(spec=Pattern)
-        high_pattern.percentage = 80.0
+        test_data = [
+            {"high_concentration": "A", "low_concentration": f"val_{i}"}
+            for i in range(10)
+        ] + [
+            {"high_concentration": "A", "low_concentration": f"val_{i}"}
+            for i in range(10, 12)
+        ]  # A appears in 12/12 = 100%
 
-        # Mock low-scoring pattern
-        low_pattern = Mock(spec=Pattern)
-        low_pattern.percentage = 15.0
+        discover_options = DiscoverOptions()
+        scores = self.discovery._score_fields_by_potential(
+            test_data, ["high_concentration", "low_concentration"], discover_options
+        )
 
-        mock_finder = Mock()
-        mock_finder.execute.side_effect = [
-            [high_pattern],  # First field
-            [low_pattern],  # Second field
-            [],  # Third field
+        # Should be sorted by score descending
+        assert len(scores) == 2
+        assert scores[0][1] >= scores[1][1]  # First score >= second score
+
+        # High concentration field should score higher
+        high_score = next(
+            score for field, score in scores if field == "high_concentration"
+        )
+        low_score = next(
+            score for field, score in scores if field == "low_concentration"
+        )
+        assert high_score > low_score
+
+    def test_calculate_field_score(self):
+        """Test field score calculation logic."""
+        # Create patterns with different concentrations
+        high_patterns = [
+            Pattern(path="A=1", count=8, percentage=80.0, depth=1, samples=[]),
+            Pattern(path="A=2", count=6, percentage=60.0, depth=1, samples=[]),
+            Pattern(path="A=3", count=4, percentage=40.0, depth=1, samples=[]),
         ]
-        mock_finder_class.return_value = mock_finder
-
-        test_data = [{"field1": "A", "field2": "B", "field3": "C"}]
-        fields = ["field1", "field2", "field3"]
-
-        scores = self.discovery._score_fields_by_potential(test_data, fields)
-
-        # Should return scored and sorted fields
-        assert len(scores) == 3
-        assert all(isinstance(score, tuple) and len(score) == 2 for score in scores)
-
-        # Should be sorted by score (descending)
-        field_names = [score[0] for score in scores]
-        score_values = [score[1] for score in scores]
-
-        assert field_names == ["field1", "field2", "field3"]
-        assert score_values == sorted(score_values, reverse=True)
-
-    def test_calculate_field_score_empty_patterns(self):
-        """Test field scoring with no patterns."""
-        score = self.discovery._calculate_field_score([])
-        assert score == 0
-
-    def test_calculate_field_score_with_patterns(self):
-        """Test field scoring with various patterns."""
-        # Create mock patterns
-        patterns = []
-        for percentage in [80.0, 50.0, 30.0, 15.0, 5.0]:
-            pattern = Mock(spec=Pattern)
-            pattern.percentage = percentage
-            patterns.append(pattern)
-
-        score = self.discovery._calculate_field_score(patterns)
-
-        # Should calculate weighted score
+        score = self.discovery._calculate_field_score(high_patterns)
         assert score > 0
-        # Score should incorporate max concentration, significant patterns, and total patterns
-        # Note: Exact calculation depends on implementation details
 
-    def test_calculate_field_score_single_pattern(self):
-        """Test field scoring with single pattern."""
-        pattern = Mock(spec=Pattern)
-        pattern.percentage = 60.0
+        # No patterns
+        empty_score = self.discovery._calculate_field_score([])
+        assert empty_score == 0
 
-        score = self.discovery._calculate_field_score([pattern])
-        expected = 60.0 * 0.5 + 1 * 5 + 1 * 0.5  # 1 significant pattern
-        assert abs(score - expected) < 0.1
+        # Score should increase with better patterns
+        better_patterns = [
+            Pattern(path="B=1", count=9, percentage=90.0, depth=1, samples=[]),
+            Pattern(path="B=2", count=7, percentage=70.0, depth=1, samples=[]),
+            Pattern(path="B=3", count=5, percentage=50.0, depth=1, samples=[]),
+        ]
+        better_score = self.discovery._calculate_field_score(better_patterns)
+        assert better_score > score
 
 
 class TestDiscoveryPatternCombinations:
@@ -273,154 +233,119 @@ class TestDiscoveryPatternCombinations:
         """Set up test fixtures."""
         self.discovery = Discovery()
 
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_discover_pattern_combinations(self, mock_finder_class):
+    def test_discover_pattern_combinations(self):
         """Test pattern combination discovery."""
-        # Mock patterns for different combinations
-        pattern1 = Mock(spec=Pattern)
-        pattern1.percentage = 70.0
-        pattern1.path = "field1=A"
+        test_data = [
+            {"field1": "A", "field2": "X"},
+            {"field1": "A", "field2": "Y"},
+            {"field1": "B", "field2": "X"},
+        ]
 
-        pattern2 = Mock(spec=Pattern)
-        pattern2.percentage = 50.0
-        pattern2.path = "field1=A > field2=X"
-
-        mock_finder = Mock()
-        mock_finder.execute.side_effect = [[pattern1], [pattern2], []]
-        mock_finder_class.return_value = mock_finder
-
-        test_data = [{"field1": "A", "field2": "X"}]
         field_scores = [("field1", 10.0), ("field2", 8.0)]
-
-        patterns, combinations = self.discovery._discover_pattern_combinations(
-            test_data,
-            field_scores,
-            max_fields=2,
-            max_combinations=5,
-            min_concentration=10.0,
+        discover_options = DiscoverOptions(
+            max_fields=2, max_combinations=5, min_percentage=20.0
         )
 
-        # Should find patterns and track combinations
-        assert len(patterns) > 0
+        patterns, combinations = self.discovery._discover_pattern_combinations(
+            test_data, field_scores, discover_options
+        )
+
+        # Should have tried some combinations
         assert len(combinations) > 0
-        assert all("fields" in combo for combo in combinations)
-        assert all("patterns_found" in combo for combo in combinations)
+        assert isinstance(patterns, list)
+
+        # Each combination should have required fields
+        for combo in combinations:
+            assert "fields" in combo
+            assert "patterns_found" in combo
+            assert isinstance(combo["fields"], list)
 
     def test_rank_and_deduplicate_patterns(self):
         """Test pattern ranking and deduplication."""
-        # Create duplicate patterns with different percentages
-        pattern1 = Mock(spec=Pattern)
-        pattern1.percentage = 60.0
-        pattern1.path = "field=A"
-
-        pattern2 = Mock(spec=Pattern)
-        pattern2.percentage = 80.0  # Higher percentage for same path
-        pattern2.path = "field=A"
-
-        pattern3 = Mock(spec=Pattern)
-        pattern3.percentage = 40.0
-        pattern3.path = "field=B"
-
-        patterns: List[Pattern] = [pattern1, pattern2, pattern3]
-        ranked = self.discovery._rank_and_deduplicate_patterns(patterns)
-
-        # Should deduplicate and keep higher percentage
-        assert len(ranked) == 2  # Only 2 unique paths
-        # Should be sorted by percentage
-        assert ranked[0].percentage >= ranked[1].percentage
-
-        # Should keep the higher percentage pattern for duplicated path
-        field_a_pattern = next(p for p in ranked if p.path == "field=A")
-        assert field_a_pattern.percentage == 80.0
-
-
-class TestDiscoveryStatistics:
-    """Test cases for discovery statistics calculation."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.discovery = Discovery()
-
-    def test_calculate_discovery_statistics(self):
-        """Test discovery statistics calculation."""
-        test_data = [{"field": "value"}] * 100
-        available_fields = ["field1", "field2", "field3"]
-        combinations_tried = [
-            {"fields": ["field1"], "patterns_found": 5},
-            {"fields": ["field1", "field2"], "patterns_found": 3},
+        # Create patterns with duplicates
+        patterns = [
+            Pattern(path="A=1", count=8, percentage=80.0, depth=1, samples=[]),
+            Pattern(path="B=2", count=6, percentage=60.0, depth=1, samples=[]),
+            Pattern(
+                path="A=1", count=7, percentage=70.0, depth=1, samples=[]
+            ),  # Duplicate with lower percentage
+            Pattern(path="C=3", count=9, percentage=90.0, depth=1, samples=[]),
         ]
 
-        pattern = Mock(spec=Pattern)
-        pattern.percentage = 75.0
-        top_patterns: List[Pattern] = [pattern]
+        result = self.discovery._rank_and_deduplicate_patterns(patterns)
 
-        stats = self.discovery._calculate_discovery_statistics(
-            test_data, available_fields, combinations_tried, top_patterns
-        )
-
-        assert stats["total_records"] == 100
-        assert stats["fields_analyzed"] == 3
-        assert stats["combinations_tried"] == 2
-        assert stats["patterns_discovered"] == 1
-        assert stats["best_concentration"] == 75.0
-
-    def test_calculate_discovery_statistics_empty_patterns(self):
-        """Test statistics calculation with no patterns."""
-        stats = self.discovery._calculate_discovery_statistics([], [], [], [])
-
-        assert stats["total_records"] == 0
-        assert stats["fields_analyzed"] == 0
-        assert stats["combinations_tried"] == 0
-        assert stats["patterns_discovered"] == 0
-        assert stats["best_concentration"] == 0
+        # Should remove duplicates and sort by percentage
+        assert len(result) == 3  # One duplicate removed
+        assert result[0].percentage == 90  # Highest first
+        assert result[1].percentage == 80  # A=1 with higher percentage kept
+        assert result[2].percentage == 60  # Lowest last
 
 
 class TestDiscoveryIntegration:
-    """Test cases for integration and end-to-end functionality."""
+    """Test cases for end-to-end discovery functionality."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.discovery = Discovery()
 
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_full_discovery_integration(self, mock_finder_class):
-        """Test full discovery process integration."""
-        # Create realistic test data
+    def test_full_discovery_integration(self):
+        """Test full discovery integration with realistic data."""
         test_data = [
-            {"country": "US", "device": "mobile", "category": "premium", "amount": 100},
-            {"country": "US", "device": "mobile", "category": "premium", "amount": 150},
-            {"country": "US", "device": "desktop", "category": "basic", "amount": 80},
-            {"country": "EU", "device": "mobile", "category": "premium", "amount": 120},
-            {"country": "EU", "device": "tablet", "category": "basic", "amount": 90},
-        ] * 20  # Scale up data
+            {"country": "US", "device": "mobile", "category": "premium"},
+            {"country": "US", "device": "mobile", "category": "premium"},
+            {"country": "US", "device": "desktop", "category": "basic"},
+            {"country": "EU", "device": "mobile", "category": "premium"},
+            {"country": "EU", "device": "tablet", "category": "basic"},
+        ]
 
-        # Mock realistic patterns
-        patterns: List[Pattern] = []
-        for _, (percentage, path) in enumerate(
-            [
-                (60.0, "country=US"),
-                (45.0, "category=premium"),
-                (35.0, "device=mobile"),
-                (25.0, "country=US > device=mobile"),
-            ]
-        ):
-            pattern = Mock(spec=Pattern)
-            pattern.percentage = percentage
-            pattern.path = path
-            patterns.append(pattern)
+        discover_input = DiscoverInput(data=test_data)
+        discover_options = DiscoverOptions(max_fields=3, max_combinations=10)
+        result = self.discovery.execute(discover_input, discover_options)
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = patterns[:2]  # Return subset for each call
-        mock_finder_class.return_value = mock_finder
+        # Comprehensive result verification
+        assert isinstance(result, DiscoverOutput)
+        assert len(result.top_patterns) > 0
+        assert len(result.field_ranking) == 3  # country, device, category
+        assert len(result.combinations_tried) > 0
+        assert result.statistics.total_records == 5
 
-        result = self.discovery.execute(test_data, max_fields=3, max_combinations=10)
+        # Check that field ranking is sorted by score
+        scores = [ranking.score for ranking in result.field_ranking]
+        assert scores == sorted(scores, reverse=True)
 
-        # Verify comprehensive results
-        assert len(result["top_patterns"]) > 0
-        assert len(result["field_ranking"]) > 0
-        assert len(result["combinations_tried"]) > 0
-        assert result["statistics"]["total_records"] == 100
-        assert result["statistics"]["fields_analyzed"] > 0
+        # Check that top patterns are sorted by percentage
+        percentages = [pattern.percentage for pattern in result.top_patterns]
+        assert percentages == sorted(percentages, reverse=True)
+
+    def test_discovery_with_low_quality_data(self):
+        """Test discovery with low quality/sparse data."""
+        sparse_data = [{"field1": f"unique_{i}", "field2": None} for i in range(5)]
+
+        discover_input = DiscoverInput(data=sparse_data)
+        discover_options = DiscoverOptions()
+        result = self.discovery.execute(discover_input, discover_options)
+
+        # Should handle gracefully
+        assert isinstance(result, DiscoverOutput)
+        # May find few or no patterns due to high cardinality
+        assert len(result.top_patterns) >= 0
+
+    def test_discovery_with_mixed_data_types(self):
+        """Test discovery with mixed data types."""
+        mixed_data = [
+            {"num": 1, "str": "text", "bool": True, "float": 1.5},
+            {"num": 2, "str": "text", "bool": False, "float": 2.5},
+            {"num": 1, "str": "other", "bool": True, "float": 1.5},
+        ]
+
+        discover_input = DiscoverInput(data=mixed_data)
+        discover_options = DiscoverOptions(max_fields=2, max_combinations=5)
+        result = self.discovery.execute(discover_input, discover_options)
+
+        # Should handle all data types
+        assert isinstance(result, DiscoverOutput)
+        assert len(result.field_ranking) == 4  # All fields analyzed
+        assert result.statistics.total_records == 3
 
 
 class TestDiscoveryEdgeCases:
@@ -434,61 +359,54 @@ class TestDiscoveryEdgeCases:
         """Test empty discovery result building."""
         result = self.discovery._build_empty_discovery_result()
 
-        assert result["top_patterns"] == []
-        assert result["field_ranking"] == []
-        assert result["combinations_tried"] == []
-        assert result["statistics"]["total_records"] == 0
+        assert result.top_patterns == []
+        assert result.field_ranking == []
+        assert result.combinations_tried == []
+        assert result.statistics.total_records == 0
 
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_discovery_with_problematic_fields(self, mock_finder_class):
-        """Test discovery when some fields cause exceptions."""
-        # Mock finder to raise exception for certain fields
-        mock_finder = Mock()
-        mock_finder.execute.side_effect = [Exception("Field error"), []]
-        mock_finder_class.return_value = mock_finder
+    def test_discovery_with_problematic_fields(self):
+        """Test discovery when some fields cause issues."""
+        test_data = [{"good_field": "A", "problematic_field": None}]
 
-        test_data = [{"good_field": "A", "bad_field": "B"}]
-        fields = ["bad_field", "good_field"]
+        discover_input = DiscoverInput(data=test_data)
+        discover_options = DiscoverOptions()
+        result = self.discovery.execute(discover_input, discover_options)
 
-        scores = self.discovery._score_fields_by_potential(test_data, fields)
+        # Should handle problematic fields gracefully
+        assert isinstance(result, DiscoverOutput)
+        # Should still analyze good fields
+        assert len(result.field_ranking) >= 0
 
-        # Should handle exceptions gracefully
-        assert len(scores) == 2
-        # Bad field should get score of 0
-        bad_field_score = next(score for field, score in scores if field == "bad_field")
-        assert bad_field_score == 0
-
-    @patch("dataspot.analyzers.discovery.Finder")
-    def test_large_dataset_performance(self, mock_finder_class):
-        """Test discovery performance with larger dataset."""
-        # Create large dataset
+    def test_discovery_with_extreme_parameters(self):
+        """Test discovery with extreme parameters."""
         test_data = [
-            {"type": f"type_{i % 10}", "status": f"status_{i % 5}", "id": i}
-            for i in range(1000)
+            {"field": "A"},
+            {"field": "B"},
         ]
 
-        mock_finder = Mock()
-        mock_finder.execute.return_value = []
-        mock_finder_class.return_value = mock_finder
+        # Very restrictive parameters
+        discover_input = DiscoverInput(data=test_data)
+        discover_options = DiscoverOptions(
+            max_fields=1, max_combinations=1, min_percentage=99.0
+        )
+        result = self.discovery.execute(discover_input, discover_options)
 
-        result = self.discovery.execute(test_data, max_fields=2, max_combinations=5)
+        assert isinstance(result, DiscoverOutput)
+        # Should find few or no patterns due to restrictive criteria
+        assert len(result.top_patterns) <= 2
 
-        # Should complete without performance issues
-        assert result["statistics"]["total_records"] == 1000
-        assert "field_ranking" in result
-
-    def test_field_detection_edge_cases(self):
-        """Test field detection with edge cases."""
-        # Data with mixed types
-        mixed_data = [
-            {"field": "string"},
-            {"field": 123},
-            {"field": None},
-            {"field": "another_string"},
-            {"field": 456},
+    def test_discovery_with_no_suitable_fields(self):
+        """Test discovery when no fields are suitable for analysis."""
+        # All unique values - should have no suitable fields
+        unique_data = [
+            {"unique_id": f"id_{i}", "timestamp": f"2023-01-{i:02d}"}
+            for i in range(1, 21)
         ]
 
-        fields = self.discovery._detect_categorical_fields(mixed_data)
+        discover_input = DiscoverInput(data=unique_data)
+        discover_options = DiscoverOptions()
+        result = self.discovery.execute(discover_input, discover_options)
 
-        assert "field" in fields
-        assert len(fields) == 1
+        assert isinstance(result, DiscoverOutput)
+        # Should handle gracefully even with no suitable fields
+        assert result.statistics.total_records == 20

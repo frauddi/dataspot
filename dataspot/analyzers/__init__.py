@@ -8,7 +8,7 @@ from .finder import Finder
 from .pattern_extractor import PatternExtractor
 from .preprocessors import Preprocessor
 from .stats import Stats
-from .tree_analyzer import Tree
+from .tree import Tree
 
 __all__ = [
     "Base",

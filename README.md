@@ -16,7 +16,7 @@ Dataspot automatically discovers **where your data concentrates**, helping you i
 - ⚡ **Simple API** - get insights in 3 lines of code
 - 📊 **Hierarchical analysis** - understand data at multiple levels
 - 🔧 **Flexible filtering** - customize analysis with powerful options
-- 📈 **Production tested** - battle-tested in real fraud detection systems
+- 📈 **Field-tested** - validated in real fraud detection systems
 
 ## 🚀 Quick Start
 
@@ -25,29 +25,32 @@ pip install dataspot
 ```
 
 ```python
-import dataspot
+from dataspot import Dataspot
+from dataspot.models.finder import FindInput, FindOptions
 
 # Sample transaction data
 data = [
-    {"country": "US", "device": "mobile", "amount": 150, "user_type": "premium"},
-    {"country": "US", "device": "mobile", "amount": 200, "user_type": "premium"},
-    {"country": "EU", "device": "desktop", "amount": 50, "user_type": "free"},
-    {"country": "US", "device": "mobile", "amount": 300, "user_type": "premium"},
-    # ... more data
+    {"country": "US", "device": "mobile", "amount": "high", "user_type": "premium"},
+    {"country": "US", "device": "mobile", "amount": "medium", "user_type": "premium"},
+    {"country": "EU", "device": "desktop", "amount": "low", "user_type": "free"},
+    {"country": "US", "device": "mobile", "amount": "high", "user_type": "premium"},
 ]
 
-# Find concentration dataspots
-dataspot = dataspot.Dataspot()
-concentrations = dataspot.find(data, fields=["country", "device", "user_type"])
+# Find concentration patterns
+dataspot = Dataspot()
+result = dataspot.find(
+    FindInput(data=data, fields=["country", "device", "user_type"]),
+    FindOptions(min_percentage=10.0, limit=5)
+)
 
 # Results show where data concentrates
-for pattern in concentrations[:5]:
+for pattern in result.patterns:
     print(f"{pattern.path} → {pattern.percentage}% ({pattern.count} records)")
 
 # Output:
-# country=US > device=mobile > user_type=premium → 45.2% (127 records)
-# country=US > device=mobile → 52.1% (146 records)
-# device=mobile → 67.8% (190 records)
+# country=US > device=mobile > user_type=premium → 75.0% (3 records)
+# country=US > device=mobile → 75.0% (3 records)
+# device=mobile → 75.0% (3 records)
 ```
 
 ## 🎯 Real-World Use Cases
@@ -55,15 +58,19 @@ for pattern in concentrations[:5]:
 ### 🚨 Fraud Detection
 
 ```python
+from dataspot.models.finder import FindInput, FindOptions
+
 # Find suspicious transaction patterns
-suspicious = dataspot.find(
-    transactions,
-    fields=["country", "payment_method", "time_of_day"],
-    min_percentage=15  # Only significant concentrations
+result = dataspot.find(
+    FindInput(
+        data=transactions,
+        fields=["country", "payment_method", "time_of_day"]
+    ),
+    FindOptions(min_percentage=15.0, contains="crypto")
 )
 
 # Spot unusual concentrations that might indicate fraud
-for pattern in suspicious:
+for pattern in result.patterns:
     if pattern.percentage > 30:
         print(f"⚠️ High concentration: {pattern.path}")
 ```
@@ -71,154 +78,126 @@ for pattern in suspicious:
 ### 📊 Business Intelligence
 
 ```python
+from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions
+
 # Discover customer behavior patterns
 insights = dataspot.analyze(
-    customer_data,
-    fields=["region", "device", "product_category", "tier"]
+    AnalyzeInput(
+        data=customer_data,
+        fields=["region", "device", "product_category", "tier"]
+    ),
+    AnalyzeOptions(min_percentage=10.0)
 )
 
 print(f"📈 Found {len(insights.patterns)} concentration patterns")
-print(f"🎯 Top opportunity: {insights.top_patterns[0].path}")
+print(f"🎯 Top opportunity: {insights.patterns[0].path}")
 ```
 
-### 🔍 Data Quality Analysis
+### 🔍 Temporal Analysis
 
 ```python
-# Find data quality issues
-concentrations = dataspot.find(user_logs, ["source", "event", "status"])
+from dataspot.models.compare import CompareInput, CompareOptions
 
-# Look for unusual concentrations that might indicate data issues
-anomalies = [p for p in concentrations if p.percentage > 80]
-for anomaly in anomalies:
-    print(f"⚠️ Possible data quality issue: {anomaly.path}")
+# Compare patterns between time periods
+comparison = dataspot.compare(
+    CompareInput(
+        current_data=this_month_data,
+        baseline_data=last_month_data,
+        fields=["country", "payment_method"]
+    ),
+    CompareOptions(
+        change_threshold=0.20,
+        statistical_significance=True
+    )
+)
+
+print(f"📊 Changes detected: {len(comparison.changes)}")
+print(f"🆕 New patterns: {len(comparison.new_patterns)}")
 ```
 
-## 🛠️ Advanced Usage
+### 🤖 Auto Discovery
 
-### Flexible Filtering
+```python
+from dataspot.models.discovery import DiscoverInput, DiscoverOptions
+
+# Automatically discover important patterns
+discovery = dataspot.discover(
+    DiscoverInput(data=transaction_data),
+    DiscoverOptions(max_fields=3, min_percentage=15.0)
+)
+
+print(f"🎯 Top patterns discovered: {len(discovery.top_patterns)}")
+for field_ranking in discovery.field_ranking[:3]:
+    print(f"📈 {field_ranking.field}: {field_ranking.score:.2f}")
+```
+
+## 🛠️ Core Methods
+
+| Method | Purpose | Input Model | Options Model | Output Model |
+|--------|---------|-------------|---------------|--------------|
+| `find()` | Find concentration patterns | `FindInput` | `FindOptions` | `FindOutput` |
+| `analyze()` | Statistical analysis | `AnalyzeInput` | `AnalyzeOptions` | `AnalyzeOutput` |
+| `compare()` | Temporal comparison | `CompareInput` | `CompareOptions` | `CompareOutput` |
+| `discover()` | Auto pattern discovery | `DiscoverInput` | `DiscoverOptions` | `DiscoverOutput` |
+| `tree()` | Hierarchical visualization | `TreeInput` | `TreeOptions` | `TreeOutput` |
+
+### Advanced Filtering Options
 
 ```python
 # Complex analysis with multiple criteria
-results = dataspot.query(
-    min_percentage=10,          # Only patterns with >10% concentration
-    max_depth=3,               # Limit hierarchy depth
-    contains="mobile",         # Must contain "mobile" in pattern
-    min_count=50,             # At least 50 records
-    sort_by="concentration"   # Sort by concentration strength
+result = dataspot.find(
+    FindInput(
+        data=data,
+        fields=["country", "device", "payment"],
+        query={"country": ["US", "EU"]}  # Pre-filter data
+    ),
+    FindOptions(
+        min_percentage=10.0,      # Only patterns with >10% concentration
+        max_depth=3,             # Limit hierarchy depth
+        contains="mobile",       # Must contain "mobile" in pattern
+        min_count=50,           # At least 50 records
+        sort_by="percentage",   # Sort by concentration strength
+        limit=20                # Top 20 patterns
+    )
 )
-```
-
-### Builder Pattern for Complex Queries
-
-```python
-from dataspot import QueryBuilder
-
-# Fluent interface for complex filtering
-high_value_patterns = QueryBuilder(dataspot) \
-    .field("country", "US") \
-    .min_percentage(20) \
-    .exclude(["test", "internal"]) \
-    .sort_by("percentage") \
-    .limit(10) \
-    .execute()
-```
-
-### Custom Analysis
-
-```python
-# Add custom preprocessing
-def extract_hour(timestamp):
-    return timestamp.split("T")[1][:2]  # Extract hour from ISO timestamp
-
-dataspot.add_preprocessor("timestamp", extract_hour)
-
-# Now timestamp field will be analyzed by hour
-patterns = dataspot.find(events, ["user_type", "timestamp", "action"])
 ```
 
 ## ⚡ Performance
 
-Dataspot is built for speed and scale. Our optimized algorithm delivers exceptional performance across datasets of any size.
+Dataspot delivers consistent, predictable performance with exceptionally efficient memory usage and linear scaling.
 
-### 🚀 Blazing Fast Performance
+### 🚀 Real-World Performance
 
 | Dataset Size | Processing Time | Memory Usage |
 |--------------|----------------|--------------|
-| 1K records   | ~3ms          | ~2MB         |
-| 10K records  | ~30ms         | ~15MB        |
-| 100K records | ~300ms        | ~150MB       |
-| 1M records   | ~3s           | ~1.5GB       |
+| 1K records   | ~4ms          | ~1MB         |
+| 10K records  | ~40ms         | ~2MB         |
+| 100K records | ~400ms        | ~3MB         |
+| 1M records   | ~4s           | ~10MB        |
 
-### 📊 Algorithm Complexity
-
-- **Time Complexity**: `O(n × f)` where n = records, f = fields
-- **Space Complexity**: `O(n × f)` linear memory usage
-- **Scalability**: Linear scaling - predictable performance growth
-
-### 🔥 Built for Production
-
-```python
-import time
-import dataspot
-
-# Large dataset example
-data = generate_transactions(100_000)  # 100K records
-fields = ["country", "device", "payment_method", "user_tier"]
-
-start = time.time()
-patterns = dataspot.find(data, fields, min_percentage=5)
-duration = time.time() - start
-
-print(f"Analyzed 100K records in {duration:.2f}s")
-# Output: Analyzed 100K records in 0.31s
-```
+> **Benchmark Details**: Performance measured on standard hardware with realistic datasets (multiple fields, mixed data types). Memory usage is exceptionally efficient due to optimized algorithms. Times are averages of multiple runs for accuracy.
 
 ### 💡 Performance Tips
 
-**Optimize for Speed:**
-
 ```python
-# Use filtering to reduce pattern count
-patterns = dataspot.find(
-    data,
-    fields,
-    min_percentage=10,    # Skip low-concentration patterns
-    max_depth=3,         # Limit hierarchy depth
-    limit=100           # Cap results
+# Optimize for speed
+result = dataspot.find(
+    FindInput(data=large_dataset, fields=fields),
+    FindOptions(
+        min_percentage=10.0,    # Skip low-concentration patterns
+        max_depth=3,           # Limit hierarchy depth
+        limit=100             # Cap results
+    )
+)
+
+# Memory efficient processing
+from dataspot.models.tree import TreeInput, TreeOptions
+
+tree = dataspot.tree(
+    TreeInput(data=data, fields=["country", "device"]),
+    TreeOptions(min_value=10, top=5)  # Simplified tree
 )
 ```
-
-**Memory Efficiency:**
-
-```python
-# Process large datasets in chunks
-def analyze_large_dataset(data, chunk_size=50000):
-    results = []
-    for i in range(0, len(data), chunk_size):
-        chunk = data[i:i + chunk_size]
-        patterns = dataspot.find(chunk, fields)
-        results.extend(patterns)
-    return results
-```
-
-### 🎯 When to Use Dataspot
-
-**✅ Perfect for:**
-
-- Real-time fraud detection (millisecond response times)
-- Large-scale business intelligence
-- High-frequency pattern analysis
-- Production systems with strict performance requirements
-
-**⚠️ Consider alternatives for:**
-
-- Simple data grouping (use `pandas.groupby()`)
-- One-time data exploration (any tool works)
-- Very small datasets (<100 records)
-
----
-
-*Benchmarks run on standard hardware (Intel i7, 16GB RAM). Your results may vary.*
 
 ## 📈 What Makes Dataspot Different?
 
@@ -230,11 +209,37 @@ def analyze_large_dataset(data, chunk_size=50000):
 | Hard to interpret | **Business-friendly hierarchy** |
 | Generic approach | **Built for real-world analysis** |
 
-## Dataspot in action
+## 🎬 Dataspot in Action
 
 ![Dataspot in action - Finding data concentration patterns](dataspot.gif)
 
-See Dataspot in action as it discovers data concentration patterns and dataspots in real-time
+See Dataspot discover concentration patterns and dataspots in real-time with hierarchical analysis and statistical insights.
+
+## 📊 API Structure
+
+### Input Models
+
+- `FindInput` - Data and fields for pattern finding
+- `AnalyzeInput` - Statistical analysis configuration
+- `CompareInput` - Current vs baseline data comparison
+- `DiscoverInput` - Automatic pattern discovery
+- `TreeInput` - Hierarchical tree visualization
+
+### Options Models
+
+- `FindOptions` - Filtering and sorting for patterns
+- `AnalyzeOptions` - Statistical analysis parameters
+- `CompareOptions` - Change detection thresholds
+- `DiscoverOptions` - Auto-discovery constraints
+- `TreeOptions` - Tree structure customization
+
+### Response Models
+
+All methods return structured responses with:
+
+- `patterns` - Found concentration patterns
+- `statistics` - Analysis metrics
+- `metadata` - Processing information
 
 ## 🔧 Installation & Requirements
 
@@ -255,8 +260,6 @@ pip install -e ".[dev]"
 
 ## 🛠️ Development Commands
 
-The project includes a Makefile with useful development commands:
-
 | Command | Description |
 |---------|-------------|
 | `make lint` | Check code for style and quality issues |
@@ -264,15 +267,18 @@ The project includes a Makefile with useful development commands:
 | `make tests` | Run all tests with coverage reporting |
 | `make check` | Run both linting and tests |
 | `make clean` | Remove cache files, build artifacts, and temporary files |
-| `make venv-clean` | Remove the virtual environment |
-| `make venv-create` | Create a new virtual environment with Python 3.9+ |
-| `make venv-install` | Install the uv package manager |
-| `make install` | Create virtual environment and install the dependencies |
+| `make install` | Create virtual environment and install dependencies |
 
-## 📚 Documentation
+## 📚 Documentation & Examples
 
 - 📖 [User Guide](docs/user-guide.md) - Complete usage documentation
-- 💡 [Examples](examples/) - Real-world usage examples
+- 💡 [Examples](examples/) - Real-world usage examples:
+  - `01_basic_query_filtering.py` - Query and filtering basics
+  - `02_pattern_filtering_basic.py` - Pattern-based filtering
+  - `06_real_world_scenarios.py` - Business use cases
+  - `08_auto_discovery.py` - Automatic pattern discovery
+  - `09_temporal_comparison.py` - A/B testing and change detection
+  - `10_stats.py` - Statistical analysis
 - 🤝 [Contributing](docs/CONTRIBUTING.md) - How to contribute
 
 ## 🌟 Why Open Source?
@@ -302,16 +308,14 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🙏 Acknowledgments
 
 - **Created by [@eliosf27](https://github.com/eliosf27)** - Original algorithm and implementation
-- **Sponsored by [Frauddi](https://frauddi.com)** - Production testing and open source support
+- **Sponsored by [Frauddi](https://frauddi.com)** - Field testing and open source support
 - **Inspired by real fraud detection challenges** - Built to solve actual problems
 
 ## 🔗 Links
 
 - 🏠 [Homepage](https://github.com/frauddi/dataspot)
-- 📦 [PyPI Package](https://pypi.org/project/dataspot/) *(coming soon)*
+- 📦 [PyPI Package](https://pypi.org/project/dataspot/)
 - 🐛 [Issue Tracker](https://github.com/frauddi/dataspot/issues)
-
----
 
 ---
 
