@@ -1,7 +1,42 @@
 """Models for compare analyzer (compare method) response structures."""
 
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+
+@dataclass
+class CompareInput:
+    """Input model for the compare() method."""
+
+    current_data: List[Dict[str, Any]]  # Current period data
+    baseline_data: List[Dict[str, Any]]  # Baseline period data for comparison
+    fields: List[str]  # List of field names to analyze for changes
+    query: Optional[Dict[str, Any]] = None  # Optional filters to apply to both datasets
+
+
+@dataclass
+class CompareOptions:
+    """Options model for the compare() method."""
+
+    statistical_significance: bool = (
+        False  # Calculate p-values and confidence intervals
+    )
+    change_threshold: float = 0.15  # Threshold for significant changes (0.15 = 15%)
+    # Additional filtering options (same as find method)
+    min_percentage: float = 1.0  # Minimum concentration percentage threshold
+    max_percentage: Optional[float] = None  # Maximum concentration percentage threshold
+    min_count: Optional[int] = None  # Minimum record count per pattern
+    max_count: Optional[int] = None  # Maximum record count per pattern
+    min_depth: Optional[int] = None  # Minimum depth for patterns to be included
+    max_depth: Optional[int] = None  # Maximum depth for patterns to be included
+    contains: Optional[str] = None  # Pattern path must contain this text
+    exclude: Optional[List[str]] = None  # Pattern path must NOT contain these texts
+    regex: Optional[str] = None  # Pattern path must match this regex pattern
+    limit: Optional[int] = None  # Maximum number of patterns to return
+    sort_by: Optional[str] = None  # Sort field: 'percentage', 'count', 'depth'
+    reverse: Optional[bool] = (
+        None  # Sort in descending order (True) or ascending (False)
+    )
 
 
 @dataclass

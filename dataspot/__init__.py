@@ -17,6 +17,7 @@ from dataspot.exceptions import (
     ValidationError,
 )
 from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
+from dataspot.models.compare import CompareInput, CompareOptions, CompareOutput
 from dataspot.models.discovery import DiscoverInput, DiscoverOptions, DiscoverOutput
 from dataspot.models.finder import FindInput, FindOptions, FindOutput
 from dataspot.models.pattern import Pattern
@@ -83,7 +84,14 @@ def discover(data, **kwargs):
 def compare(current_data, baseline_data, fields, **kwargs):
     """Quick function to compare data."""
     dataspot = Dataspot()
-    return dataspot.compare(current_data, baseline_data, fields, **kwargs)
+    compare_input = CompareInput(
+        current_data=current_data,
+        baseline_data=baseline_data,
+        fields=fields,
+        query=kwargs.pop("query", None),
+    )
+    compare_options = CompareOptions(**kwargs)
+    return dataspot.compare(compare_input, compare_options)
 
 
 # Package metadata
@@ -95,6 +103,10 @@ __all__ = [
     "AnalyzeInput",
     "AnalyzeOptions",
     "AnalyzeOutput",
+    # Compare models
+    "CompareInput",
+    "CompareOptions",
+    "CompareOutput",
     # Discover models
     "DiscoverInput",
     "DiscoverOptions",

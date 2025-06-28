@@ -1,8 +1,14 @@
 """Compare analyzer for temporal/segmental data comparison with advanced features."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from ..models.compare import ChangeItem, CompareOutput, ComparisonStatistics
+from ..models.compare import (
+    ChangeItem,
+    CompareInput,
+    CompareOptions,
+    CompareOutput,
+    ComparisonStatistics,
+)
 from ..models.finder import FindInput, FindOptions
 from .base import Base
 from .stats import Stats
@@ -18,48 +24,41 @@ class Compare(Base):
 
     def execute(
         self,
-        current_data: List[Dict[str, Any]],
-        baseline_data: List[Dict[str, Any]],
-        fields: List[str],
-        statistical_significance: bool = True,
-        change_threshold: float = 0.15,
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: CompareInput,
+        options: CompareOptions,
     ) -> CompareOutput:
         """Compare current data against baseline to detect changes with advanced analytics.
 
         Args:
-            current_data: Current period data
-            baseline_data: Baseline period data for comparison
-            fields: Fields to analyze for changes
-            statistical_significance: Calculate p-values and confidence intervals
-            change_threshold: Threshold for significant changes (0.15 = 15%)
-            query: Optional filters to apply to both datasets
-            **kwargs: Additional filtering options
+            input: CompareInput containing current data, baseline data, fields, and optional query
+            options: CompareOptions containing statistical and filtering parameters
 
         Returns:
             CompareOutput dataclass with comprehensive comparison results, changes, and alerts
 
         """
         # Validate input data
-        self._validate_data(current_data)
-        self._validate_data(baseline_data)
+        self._validate_data(input.current_data)
+        self._validate_data(input.baseline_data)
+
+        current_data = input.current_data
+        baseline_data = input.baseline_data
 
         # Apply query filters if provided
-        if query:
-            current_data = self._filter_data_by_query(current_data, query)
-            baseline_data = self._filter_data_by_query(baseline_data, query)
+        if input.query:
+            current_data = self._filter_data_by_query(current_data, input.query)
+            baseline_data = self._filter_data_by_query(baseline_data, input.query)
 
         # Get patterns for both datasets
-        current_patterns = self._get_patterns(current_data, fields, **kwargs)
-        baseline_patterns = self._get_patterns(baseline_data, fields, **kwargs)
+        current_patterns = self._get_patterns(current_data, input.fields, options)
+        baseline_patterns = self._get_patterns(baseline_data, input.fields, options)
 
         # Compare patterns and detect changes
         changes_data = self._compare_patterns(
             current_patterns,
             baseline_patterns,
-            statistical_significance=statistical_significance,
-            change_threshold=change_threshold,
+            statistical_significance=options.statistical_significance,
+            change_threshold=options.change_threshold,
         )
 
         # Convert changes to ChangeItem dataclasses
@@ -92,8 +91,8 @@ class Compare(Base):
 
         # Create ComparisonStatistics dataclass
         statistics = ComparisonStatistics(
-            current_total=len(current_data),
-            baseline_total=len(baseline_data),
+            current_total=len(input.current_data),
+            baseline_total=len(input.baseline_data),
             patterns_compared=len(changes),
             significant_changes=len([c for c in changes_data if c["is_significant"]]),
         )
@@ -106,9 +105,9 @@ class Compare(Base):
             increased_patterns=increased_patterns,
             decreased_patterns=decreased_patterns,
             statistics=statistics,
-            fields_analyzed=fields,
-            change_threshold=change_threshold,
-            statistical_significance=statistical_significance,
+            fields_analyzed=input.fields,
+            change_threshold=options.change_threshold,
+            statistical_significance=options.statistical_significance,
         )
 
     def _dict_to_change_item(self, change_dict: Dict[str, Any]) -> ChangeItem:
@@ -132,7 +131,7 @@ class Compare(Base):
         )
 
     def _get_patterns(
-        self, data: List[Dict[str, Any]], fields: List[str], **kwargs
+        self, data: List[Dict[str, Any]], fields: List[str], options: CompareOptions
     ) -> Dict[str, Dict[str, Any]]:
         """Extract patterns from data."""
         from .finder import Finder
@@ -141,7 +140,20 @@ class Compare(Base):
         finder.preprocessors = self.preprocessors
 
         find_input = FindInput(data=data, fields=fields)
-        find_options = FindOptions(**kwargs)
+        find_options = FindOptions(
+            min_percentage=options.min_percentage,
+            max_percentage=options.max_percentage,
+            min_count=options.min_count,
+            max_count=options.max_count,
+            min_depth=options.min_depth,
+            max_depth=options.max_depth,
+            contains=options.contains,
+            exclude=options.exclude,
+            regex=options.regex,
+            limit=options.limit,
+            sort_by=options.sort_by,
+            reverse=options.reverse,
+        )
         patterns = finder.execute(find_input, find_options)
 
         # Convert to dictionary for easier comparison

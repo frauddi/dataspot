@@ -1,10 +1,10 @@
 """Core pattern dataspot for finding data concentration dataspots."""
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from .analyzers import Analyzer, Base, Compare, Discovery, Tree
 from .models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
-from .models.compare import CompareOutput
+from .models.compare import CompareInput, CompareOptions, CompareOutput
 from .models.discovery import DiscoverInput, DiscoverOptions, DiscoverOutput
 from .models.finder import FindInput, FindOptions, FindOutput
 from .models.tree import TreeInput, TreeOptions, TreeOutput
@@ -125,48 +125,33 @@ class Dataspot:
 
     def compare(
         self,
-        current_data: List[Dict[str, Any]],
-        baseline_data: List[Dict[str, Any]],
-        fields: List[str],
-        statistical_significance: bool = False,
-        change_threshold: float = 0.15,
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: CompareInput,
+        options: CompareOptions,
     ) -> CompareOutput:
         """Compare datasets to detect changes and anomalies between periods.
 
         Args:
-            current_data: Current period data
-            baseline_data: Baseline period data for comparison
-            fields: List of field names to analyze for changes
-            statistical_significance: Calculate p-values and confidence intervals (default: False)
-            change_threshold: Threshold for significant changes, 0.15 = 15% (default: 0.15)
-            query: Optional filters to apply to both datasets
-            **kwargs: Additional filtering options (same as find method)
+            input: CompareInput containing current data, baseline data, fields, and optional query
+            options: CompareOptions containing statistical and filtering parameters
 
         Returns:
-            Dictionary with comprehensive comparison results and changes.
+            CompareOutput dataclass with comprehensive comparison results and changes.
 
         Example:
             # Fraud detection comparison
-            changes = dataspot.compare(
+            compare_input = CompareInput(
                 current_data=this_month_transactions,
                 baseline_data=last_month_transactions,
                 fields=["country", "payment_method"],
-                statistical_significance=True,
-                change_threshold=0.25,
                 query={"country": ["US", "EU"]},
             )
+            compare_options = CompareOptions(
+                statistical_significance=True,
+                change_threshold=0.25,
+            )
+            changes = dataspot.compare(compare_input, compare_options)
 
         """
         compare = Compare()
         compare.preprocessors = self._base.preprocessors
-        return compare.execute(
-            current_data=current_data,
-            baseline_data=baseline_data,
-            fields=fields,
-            statistical_significance=statistical_significance,
-            change_threshold=change_threshold,
-            query=query,
-            **kwargs,
-        )
+        return compare.execute(input, options)

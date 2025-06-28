@@ -4,6 +4,7 @@ import pytest
 
 from dataspot.analyzers.compare import Compare
 from dataspot.exceptions import DataspotError
+from dataspot.models.compare import CompareInput, CompareOptions
 
 
 class TestCompareInitialization:
@@ -53,11 +54,13 @@ class TestCompareExecute:
 
     def test_execute_basic(self):
         """Test basic execute functionality."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["transaction_type", "country"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Check result structure
         assert result.changes is not None
@@ -65,7 +68,7 @@ class TestCompareExecute:
         assert result.statistics.current_total == len(self.current_data)
         assert result.statistics.baseline_total == len(self.baseline_data)
         assert result.fields_analyzed == ["transaction_type", "country"]
-        assert result.statistical_significance is True
+        assert result.statistical_significance is False  # Default value
 
         assert result.statistics.current_total == len(self.current_data)
         assert result.statistics.baseline_total == len(self.baseline_data)
@@ -73,27 +76,34 @@ class TestCompareExecute:
 
     def test_execute_with_invalid_data(self):
         """Test execute with invalid data."""
-        with pytest.raises(DataspotError):
-            self.compare.execute(
-                current_data="invalid_data",  # type: ignore
-                baseline_data=self.baseline_data,
-                fields=["field"],
-            )
+        compare_input = CompareInput(
+            current_data="invalid_data",  # type: ignore
+            baseline_data=self.baseline_data,
+            fields=["field"],
+        )
+        compare_options = CompareOptions()
 
         with pytest.raises(DataspotError):
-            self.compare.execute(
-                current_data=self.current_data,
-                baseline_data="invalid_data",  # type: ignore
-                fields=["field"],
-            )
+            self.compare.execute(compare_input, compare_options)
+
+        compare_input = CompareInput(
+            current_data=self.current_data,
+            baseline_data="invalid_data",  # type: ignore
+            fields=["field"],
+        )
+
+        with pytest.raises(DataspotError):
+            self.compare.execute(compare_input, compare_options)
 
     def test_execute_with_empty_data(self):
         """Test execute with empty data."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=[],
             baseline_data=self.baseline_data,
             fields=["transaction_type"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         assert result.statistics.current_total == 0
         assert len(result.changes) >= 0
@@ -101,24 +111,27 @@ class TestCompareExecute:
     def test_execute_with_query(self):
         """Test execute with query filtering."""
         query = {"country": "US"}
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["transaction_type"],
             query=query,
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should still have proper structure
         assert result.changes is not None
 
     def test_execute_with_statistical_significance(self):
         """Test execute with statistical significance enabled."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["transaction_type", "country"],
-            statistical_significance=True,
         )
+        compare_options = CompareOptions(statistical_significance=True)
+        result = self.compare.execute(compare_input, compare_options)
 
         assert result.statistical_significance is True
 
@@ -154,11 +167,13 @@ class TestCompareStatusUppercase:
 
     def test_status_values_are_uppercase(self):
         """Test that all status values are returned in uppercase."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["type"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Check that all status values are uppercase
         for change in result.changes:
@@ -179,11 +194,13 @@ class TestCompareStatusUppercase:
 
     def test_new_and_disappeared_patterns(self):
         """Test detection of new and disappeared patterns."""
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=self.current_data,
             baseline_data=self.baseline_data,
             fields=["type"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should detect type "C" as NEW
         type_c_changes = [c for c in result.changes if "type=C" in c.path]
@@ -212,11 +229,13 @@ class TestCompareChanges:
             {"category": "electronics", "brand": "samsung"},
         ]
 
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=current_data,
             baseline_data=baseline_data,
             fields=["category", "brand"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should detect books category as new
         new_patterns = result.new_patterns
@@ -239,11 +258,13 @@ class TestCompareChanges:
             {"product": "phone", "status": "active"},  # Will disappear
         ]
 
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=current_data,
             baseline_data=baseline_data,
             fields=["product", "status"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should detect phone as disappeared
         disappeared_patterns = result.disappeared_patterns
@@ -260,11 +281,11 @@ class TestCompareChanges:
         current_data = [{"type": "A"}] * 15 + [{"type": "B"}] * 10 + [{"type": "C"}] * 5
         baseline_data = [{"type": "A"}] * 10 + [{"type": "B"}] * 10
 
-        result = self.compare.execute(
-            current_data=current_data,
-            baseline_data=baseline_data,
-            fields=["type"],
+        compare_input = CompareInput(
+            current_data=current_data, baseline_data=baseline_data, fields=["type"]
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Check categorized patterns
         assert result.stable_patterns is not None
@@ -295,11 +316,13 @@ class TestCompareEdgeCases:
             {"field1": "value3", "field2": "value4"},
         ]
 
-        result = self.compare.execute(
+        compare_input = CompareInput(
             current_data=identical_data,
             baseline_data=identical_data,
             fields=["field1", "field2"],
         )
+        compare_options = CompareOptions()
+        result = self.compare.execute(compare_input, compare_options)
 
         # Should have changes but they should all be stable
         assert len(result.changes) > 0
@@ -312,12 +335,11 @@ class TestCompareEdgeCases:
         current_data = [{"type": "fraud"}] * 100  # High count
         baseline_data = [{"type": "fraud"}] * 50  # Lower count
 
-        result = self.compare.execute(
-            current_data=current_data,
-            baseline_data=baseline_data,
-            fields=["type"],
-            statistical_significance=True,
+        compare_input = CompareInput(
+            current_data=current_data, baseline_data=baseline_data, fields=["type"]
         )
+        compare_options = CompareOptions(statistical_significance=True)
+        result = self.compare.execute(compare_input, compare_options)
 
         # Find the fraud pattern change
         fraud_changes = [c for c in result.changes if "type=fraud" in c.path]
