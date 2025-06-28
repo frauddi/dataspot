@@ -16,7 +16,7 @@ Dataspot automatically discovers **where your data concentrates**, helping you i
 - ⚡ **Simple API** - get insights in 3 lines of code
 - 📊 **Hierarchical analysis** - understand data at multiple levels
 - 🔧 **Flexible filtering** - customize analysis with powerful options
-- 📈 **Production tested** - battle-tested in real fraud detection systems
+- 📈 **Field-tested** - validated in real fraud detection systems
 
 ## 🚀 Quick Start
 
@@ -78,15 +78,15 @@ for pattern in result.patterns:
 ### 📊 Business Intelligence
 
 ```python
-from dataspot.models.analyzer import AnalyzerInput, AnalyzerOptions
+from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions
 
 # Discover customer behavior patterns
 insights = dataspot.analyze(
-    AnalyzerInput(
+    AnalyzeInput(
         data=customer_data,
         fields=["region", "device", "product_category", "tier"]
     ),
-    AnalyzerOptions(min_percentage=10.0)
+    AnalyzeOptions(min_percentage=10.0)
 )
 
 print(f"📈 Found {len(insights.patterns)} concentration patterns")
@@ -133,13 +133,13 @@ for field_ranking in discovery.field_ranking[:3]:
 
 ## 🛠️ Core Methods
 
-| Method | Purpose | Input Model | Options Model |
-|--------|---------|-------------|---------------|
-| `find()` | Find concentration patterns | `FindInput` | `FindOptions` |
-| `analyze()` | Statistical analysis | `AnalyzerInput` | `AnalyzerOptions` |
-| `compare()` | Temporal comparison | `CompareInput` | `CompareOptions` |
-| `discover()` | Auto pattern discovery | `DiscoverInput` | `DiscoverOptions` |
-| `tree()` | Hierarchical visualization | `TreeInput` | `TreeOptions` |
+| Method | Purpose | Input Model | Options Model | Output Model |
+|--------|---------|-------------|---------------|--------------|
+| `find()` | Find concentration patterns | `FindInput` | `FindOptions` | `FindOutput` |
+| `analyze()` | Statistical analysis | `AnalyzeInput` | `AnalyzeOptions` | `AnalyzeOutput` |
+| `compare()` | Temporal comparison | `CompareInput` | `CompareOptions` | `CompareOutput` |
+| `discover()` | Auto pattern discovery | `DiscoverInput` | `DiscoverOptions` | `DiscoverOutput` |
+| `tree()` | Hierarchical visualization | `TreeInput` | `TreeOptions` | `TreeOutput` |
 
 ### Advanced Filtering Options
 
@@ -220,7 +220,7 @@ See Dataspot discover concentration patterns and dataspots in real-time with hie
 ### Input Models
 
 - `FindInput` - Data and fields for pattern finding
-- `AnalyzerInput` - Statistical analysis configuration
+- `AnalyzeInput` - Statistical analysis configuration
 - `CompareInput` - Current vs baseline data comparison
 - `DiscoverInput` - Automatic pattern discovery
 - `TreeInput` - Hierarchical tree visualization
@@ -228,7 +228,7 @@ See Dataspot discover concentration patterns and dataspots in real-time with hie
 ### Options Models
 
 - `FindOptions` - Filtering and sorting for patterns
-- `AnalyzerOptions` - Statistical analysis parameters
+- `AnalyzeOptions` - Statistical analysis parameters
 - `CompareOptions` - Change detection thresholds
 - `DiscoverOptions` - Auto-discovery constraints
 - `TreeOptions` - Tree structure customization
@@ -308,7 +308,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🙏 Acknowledgments
 
 - **Created by [@eliosf27](https://github.com/eliosf27)** - Original algorithm and implementation
-- **Sponsored by [Frauddi](https://frauddi.com)** - Production testing and open source support
+- **Sponsored by [Frauddi](https://frauddi.com)** - Field testing and open source support
 - **Inspired by real fraud detection challenges** - Built to solve actual problems
 
 ## 🔗 Links
