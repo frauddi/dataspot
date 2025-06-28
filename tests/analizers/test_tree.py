@@ -8,7 +8,7 @@ import pytest
 
 from dataspot.analyzers.tree_analyzer import Tree
 from dataspot.exceptions import DataspotError
-from dataspot.models.tree import TreeOutput
+from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
 
 
 class TestTreeCore:
@@ -26,7 +26,9 @@ class TestTreeCore:
 
     def test_execute_with_empty_data(self):
         """Test execute method with empty data."""
-        result = self.tree.execute([], ["field1", "field2"])
+        tree_input = TreeInput(data=[], fields=["field1", "field2"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should return empty tree structure
         assert isinstance(result, TreeOutput)
@@ -39,8 +41,9 @@ class TestTreeCore:
 
     def test_execute_with_empty_fields(self):
         """Test execute method with empty fields list."""
-        data = [{"a": 1, "b": 2}]
-        result = self.tree.execute(data, [])
+        tree_input = TreeInput(data=[{"a": 1, "b": 2}], fields=[])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should return root-only tree
         assert isinstance(result, TreeOutput)
@@ -50,8 +53,10 @@ class TestTreeCore:
 
     def test_execute_with_invalid_data(self):
         """Test execute method with invalid data."""
+        tree_input = TreeInput(data=None, fields=["field1"])  # type: ignore
+        tree_options = TreeOptions()
         with pytest.raises(DataspotError, match="Data must be a list of dictionaries"):
-            self.tree.execute(None, ["field1"])  # type: ignore
+            self.tree.execute(tree_input, tree_options)
 
     def test_execute_basic_tree_building(self):
         """Test basic tree building functionality."""
@@ -61,7 +66,9 @@ class TestTreeCore:
             {"country": "EU", "device": "mobile"},
         ]
 
-        result = self.tree.execute(data, ["country", "device"])
+        tree_input = TreeInput(data=data, fields=["country", "device"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Check root structure
         assert isinstance(result, TreeOutput)
@@ -83,7 +90,9 @@ class TestTreeCore:
             {"country": "EU", "device": "desktop"},
         ]
 
-        result = self.tree.execute(data, ["country", "device"], top=3)
+        tree_input = TreeInput(data=data, fields=["country", "device"])
+        tree_options = TreeOptions(top=3)
+        result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.top == 3
@@ -97,8 +106,11 @@ class TestTreeCore:
         ]
 
         # Filter to only active records
-        query = {"active": True}
-        result = self.tree.execute(data, ["country", "device"], query=query)
+        tree_input = TreeInput(
+            data=data, fields=["country", "device"], query={"active": True}
+        )
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should only include 2 active records
         assert isinstance(result, TreeOutput)
@@ -137,7 +149,9 @@ class TestTreeStructure:
             {"level1": "B", "level2": "X", "level3": "1"},
         ]
 
-        result = self.tree.execute(data, ["level1", "level2", "level3"])
+        tree_input = TreeInput(data=data, fields=["level1", "level2", "level3"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Check root
         assert isinstance(result, TreeOutput)
@@ -162,7 +176,9 @@ class TestTreeStructure:
             {"category": "B", "type": "X"},
         ]
 
-        result = self.tree.execute(data, ["category", "type"])
+        tree_input = TreeInput(data=data, fields=["category", "type"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Root should be 100%
         assert isinstance(result, TreeOutput)
@@ -181,7 +197,9 @@ class TestTreeStructure:
             {"a": 1, "b": 3},
         ]
 
-        result = self.tree.execute(data, ["a", "b"])
+        tree_input = TreeInput(data=data, fields=["a", "b"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Root should be node 0
         assert isinstance(result, TreeOutput)
@@ -200,7 +218,9 @@ class TestTreeStructure:
             {"category": "B"},
         ]
 
-        result = self.tree.execute(data, ["category"])
+        tree_input = TreeInput(data=data, fields=["category"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.value == 3
@@ -219,7 +239,9 @@ class TestTreeStructure:
             {"field1": "A", "field2": "Y", "field3": "2"},
         ]
 
-        result = self.tree.execute(data, ["field1", "field2", "field3"])
+        tree_input = TreeInput(data=data, fields=["field1", "field2", "field3"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should build multi-level hierarchy
         assert isinstance(result, TreeOutput)
@@ -249,7 +271,9 @@ class TestTreeFiltering:
             {"category": "B", "type": "Y"},
         ]
 
-        result = self.tree.execute(data, ["category", "type"], min_value=2)
+        tree_input = TreeInput(data=data, fields=["category", "type"])
+        tree_options = TreeOptions(min_value=2)
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should only include nodes with at least 2 records
         def check_min_value(node):
@@ -276,7 +300,9 @@ class TestTreeFiltering:
             {"category": "B", "type": "Y"},
         ]
 
-        result = self.tree.execute(data, ["category", "type"], min_percentage=50)
+        tree_input = TreeInput(data=data, fields=["category", "type"])
+        tree_options = TreeOptions(min_percentage=50)
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should only include nodes with at least 50% concentration
         def check_min_percentage(node):
@@ -297,9 +323,11 @@ class TestTreeFiltering:
             {"level1": "A", "level2": "Y", "level3": "2", "level4": "beta"},
         ]
 
-        result = self.tree.execute(
-            data, ["level1", "level2", "level3", "level4"], max_depth=2
+        tree_input = TreeInput(
+            data=data, fields=["level1", "level2", "level3", "level4"]
         )
+        tree_options = TreeOptions(max_depth=2)
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should not go deeper than 2 levels
         def check_max_depth(node, current_depth=0):
@@ -328,7 +356,9 @@ class TestTreeFiltering:
         ]
 
         # Filter to only include nodes containing "mobile"
-        result = self.tree.execute(data, ["category", "type"], contains="mobile")
+        tree_input = TreeInput(data=data, fields=["category", "type"])
+        tree_options = TreeOptions(contains="mobile")
+        result = self.tree.execute(tree_input, tree_options)
 
         # Check that we have some results and they contain mobile
         assert result.value > 0
@@ -365,7 +395,9 @@ class TestTreeEdgeCases:
             {"field1": "test", "field2": "value"},
         ]
 
-        result = self.tree.execute(data, ["field1", "field2"])
+        tree_input = TreeInput(data=data, fields=["field1", "field2"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.value == 3
@@ -379,7 +411,9 @@ class TestTreeEdgeCases:
             {"field1": True, "field2": [1, 2, 3]},
         ]
 
-        result = self.tree.execute(data, ["field1", "field2"])
+        tree_input = TreeInput(data=data, fields=["field1", "field2"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.value == 3
@@ -393,7 +427,9 @@ class TestTreeEdgeCases:
             {"país": "España", "categoría": "marketing"},
         ]
 
-        result = self.tree.execute(data, ["país", "categoría"])
+        tree_input = TreeInput(data=data, fields=["país", "categoría"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.value == 3
@@ -410,7 +446,9 @@ class TestTreeEdgeCases:
             for i in range(500)
         ]
 
-        result = self.tree.execute(data, ["category", "value"], top=3)
+        tree_input = TreeInput(data=data, fields=["category", "value"])
+        tree_options = TreeOptions(top=3)
+        result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.value == 500
@@ -427,7 +465,9 @@ class TestTreeEdgeCases:
             {"category": "B", "type": "Y"},
         ]
 
-        result = self.tree.execute(data, ["category", "type"])
+        tree_input = TreeInput(data=data, fields=["category", "type"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         # Should be able to serialize to JSON without errors using to_dict()
         result_dict = result.to_dict()
@@ -446,7 +486,9 @@ class TestTreeEdgeCases:
             {"field1": "", "field2": ""},
         ]
 
-        result = self.tree.execute(data, ["field1", "field2"])
+        tree_input = TreeInput(data=data, fields=["field1", "field2"])
+        tree_options = TreeOptions()
+        result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.value == 3

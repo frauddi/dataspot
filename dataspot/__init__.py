@@ -17,6 +17,7 @@ from dataspot.exceptions import (
     ValidationError,
 )
 from dataspot.models.pattern import Pattern
+from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
 
 
 # Quick functions for easy usage
@@ -32,10 +33,23 @@ def analyze(data, fields, **kwargs):
     return dataspot.analyze(data, fields, **kwargs)
 
 
-def tree(data, fields, **kwargs):
-    """Quick function to build a tree of patterns."""
+def tree(data, fields, query=None, **kwargs):
+    """Quick function to build a tree of patterns.
+
+    Args:
+        data: List of records (dictionaries) to analyze
+        fields: List of field names to analyze hierarchically
+        query: Optional filters to apply to data
+        **kwargs: Additional tree options (top, min_value, etc.)
+
+    Returns:
+        TreeOutput: Tree structure dataclass
+
+    """
     dataspot = Dataspot()
-    return dataspot.tree(data, fields, **kwargs)
+    tree_input = TreeInput(data=data, fields=fields, query=query)
+    tree_options = TreeOptions(**kwargs)
+    return dataspot.tree(tree_input, tree_options)
 
 
 def discover(data, **kwargs):
@@ -55,6 +69,10 @@ __all__ = [
     # Main classes
     "Dataspot",
     "Pattern",
+    # Tree models
+    "TreeInput",
+    "TreeOptions",
+    "TreeOutput",
     # Quick functions
     "find",
     "analyze",

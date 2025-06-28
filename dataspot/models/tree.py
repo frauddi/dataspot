@@ -5,6 +5,51 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass
+class TreeInput:
+    """Input model for the tree() method."""
+
+    data: List[Dict[str, Any]]  # List of records (dictionaries) to analyze
+    fields: List[str]  # List of field names to analyze hierarchically
+    query: Optional[Dict[str, Any]] = None  # Optional filters to apply to data
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert tree input to dictionary."""
+        return asdict(self)
+
+
+@dataclass
+class TreeOptions:
+    """Options model for the tree() method."""
+
+    top: int = 5  # Number of top elements to consider per level
+    min_value: Optional[int] = None  # Minimum count for a node to be included
+    min_percentage: Optional[float] = (
+        None  # Minimum percentage for a node to be included
+    )
+    max_value: Optional[int] = None  # Maximum count for a node to be included
+    max_percentage: Optional[float] = (
+        None  # Maximum percentage for a node to be included
+    )
+    min_depth: Optional[int] = None  # Minimum depth for nodes to be included
+    max_depth: Optional[int] = None  # Maximum depth to analyze (limits tree depth)
+    contains: Optional[str] = None  # Node name must contain this text
+    exclude: Optional[List[str]] = None  # Node name must NOT contain these texts
+    regex: Optional[str] = None  # Node name must match this regex pattern
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert tree options to dictionary."""
+        return asdict(self)
+
+    def to_kwargs(self) -> Dict[str, Any]:
+        """Convert to kwargs format, excluding None values."""
+        result = {}
+        for key, value in asdict(self).items():
+            if value is not None:
+                result[key] = value
+        return result
+
+
+@dataclass
 class TreeNode:
     """A single node in the hierarchical tree structure."""
 

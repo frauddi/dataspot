@@ -1,8 +1,8 @@
 """Tree analyzer for building hierarchical JSON tree structures."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from ..models.tree import TreeNode, TreeOutput, TreeStatistics
+from ..models.tree import TreeInput, TreeNode, TreeOptions, TreeOutput, TreeStatistics
 from .base import Base
 from .filters import PatternFilter, TreeFilter
 from .pattern_extractor import PatternExtractor, TreeBuilder
@@ -17,37 +17,32 @@ class Tree(Base):
 
     def execute(
         self,
-        data: List[Dict[str, Any]],
-        fields: List[str],
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: TreeInput,
+        options: TreeOptions,
     ) -> TreeOutput:
         """Build and return hierarchical tree structure in JSON format.
 
         Args:
-            data: List of records (dictionaries)
-            fields: List of field names to analyze hierarchically
-            query: Optional filters to apply to data
-            **kwargs: Tree building and filtering options
+            input: TreeInput containing data, fields, and optional query
+            options: TreeOptions containing tree building and filtering options
 
         Returns:
             TreeOutput dataclass representing the hierarchical tree structure
 
         """
         # Validate input
-        self._validate_data(data)
+        self._validate_data(input.data)
 
         # Filter data based on query
-        filtered_data = self._filter_data_by_query(data, query)
+        filtered_data = self._filter_data_by_query(input.data, input.query)
 
-        # Get top parameter and build empty tree if no data
-        top = kwargs.get("top", 5)
+        # Build empty tree if no data
         if not filtered_data:
             empty_statistics = TreeStatistics(
-                total_records=len(data),
+                total_records=len(input.data),
                 filtered_records=0,
                 patterns_found=0,
-                fields_analyzed=len(fields),
+                fields_analyzed=len(input.fields),
             )
             return TreeOutput(
                 name="root",
@@ -55,33 +50,33 @@ class Tree(Base):
                 value=0,
                 percentage=0.0,
                 node=0,
-                top=top,
+                top=options.top,
                 statistics=empty_statistics,
-                fields_analyzed=fields,
+                fields_analyzed=input.fields,
             )
 
         # Build internal tree structure
-        internal_tree = self._build_tree(filtered_data, fields)
+        internal_tree = self._build_tree(filtered_data, input.fields)
         total_records = len(filtered_data)
 
         # Extract patterns from tree
         all_patterns = PatternExtractor.from_tree(internal_tree, total_records)
 
         # Apply tree-specific filters
-        filter_kwargs = TreeFilter.build_filter_kwargs(**kwargs)
+        filter_kwargs = TreeFilter.build_filter_kwargs(**options.to_kwargs())
         filtered_patterns = PatternFilter(all_patterns).apply_all(**filter_kwargs)
 
         # Build and return clean JSON tree
-        tree_result = TreeBuilder(filtered_patterns, total_records, top).build()
+        tree_result = TreeBuilder(filtered_patterns, total_records, options.top).build()
 
         # Convert tree result to TreeOutput
         children = self._convert_tree_children(tree_result.get("children", []))
 
         statistics = TreeStatistics(
-            total_records=len(data),
+            total_records=len(input.data),
             filtered_records=len(filtered_data),
             patterns_found=len(filtered_patterns),
-            fields_analyzed=len(fields),
+            fields_analyzed=len(input.fields),
         )
 
         return TreeOutput(
@@ -90,9 +85,9 @@ class Tree(Base):
             value=tree_result.get("value", 0),
             percentage=tree_result.get("percentage", 0.0),
             node=tree_result.get("node", 0),
-            top=top,
+            top=options.top,
             statistics=statistics,
-            fields_analyzed=fields,
+            fields_analyzed=input.fields,
         )
 
     def _convert_tree_children(

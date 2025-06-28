@@ -11,7 +11,7 @@ from dataspot.models.analyzer import AnalyzeOutput
 from dataspot.models.discovery import DiscoverOutput
 from dataspot.models.finder import FindOutput
 from dataspot.models.pattern import Pattern
-from dataspot.models.tree import TreeOutput
+from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
 
 
 class TestDataspotInitialization:
@@ -224,7 +224,9 @@ class TestDataspotTree:
 
     def test_tree_basic(self):
         """Test basic tree functionality."""
-        result = self.dataspot.tree(self.test_data, ["category", "type"])
+        tree_input = TreeInput(data=self.test_data, fields=["category", "type"])
+        tree_options = TreeOptions()
+        result = self.dataspot.tree(tree_input, tree_options)
 
         # Should return TreeOutput dataclass
         assert isinstance(result, TreeOutput)
@@ -239,10 +241,11 @@ class TestDataspotTree:
 
     def test_tree_with_filters(self):
         """Test tree with filtering options."""
-        query = {"category": "A"}
-        kwargs = {"top": 3, "min_value": 1, "max_depth": 2}
-
-        result = self.dataspot.tree(self.test_data, ["type"], query=query, **kwargs)
+        tree_input = TreeInput(
+            data=self.test_data, fields=["type"], query={"category": "A"}
+        )
+        tree_options = TreeOptions(top=3, min_value=1, max_depth=2)
+        result = self.dataspot.tree(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         # Should only include category A records (filtered by query)
@@ -264,7 +267,9 @@ class TestDataspotTree:
         test_preprocessor = lambda x: f"clean_{x}" if isinstance(x, str) else x  # noqa: E731
         self.dataspot.add_preprocessor("category", test_preprocessor)
 
-        result = self.dataspot.tree(self.test_data, ["category"])
+        tree_input = TreeInput(data=self.test_data, fields=["category"])
+        tree_options = TreeOptions()
+        result = self.dataspot.tree(tree_input, tree_options)
 
         # Should apply preprocessor - node names should have prefix
         for child in result.children:
@@ -362,7 +367,9 @@ class TestDataspotIntegration:
         # Call all methods and verify they all use preprocessors
         find_result = self.dataspot.find(test_data, ["field1"])
         analyze_result = self.dataspot.analyze(test_data, ["field1"])
-        tree_result = self.dataspot.tree(test_data, ["field1"])
+        tree_input = TreeInput(data=test_data, fields=["field1"])
+        tree_options = TreeOptions()
+        tree_result = self.dataspot.tree(tree_input, tree_options)
         discover_result = self.dataspot.discover(test_data)
 
         # All should return valid results

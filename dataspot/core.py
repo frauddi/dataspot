@@ -7,7 +7,7 @@ from .models.analyzer import AnalyzeOutput
 from .models.compare import CompareOutput
 from .models.discovery import DiscoverOutput
 from .models.finder import FindOutput
-from .models.tree import TreeOutput
+from .models.tree import TreeInput, TreeOptions, TreeOutput
 
 
 class Dataspot:
@@ -97,61 +97,30 @@ class Dataspot:
 
     def tree(
         self,
-        data: List[Dict[str, Any]],
-        fields: List[str],
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: TreeInput,
+        options: TreeOptions,
     ) -> TreeOutput:
         """Build and return hierarchical tree structure in JSON format.
 
         Args:
-            data: List of records (dictionaries)
-            fields: List of field names to analyze hierarchically
-            query: Optional filters to apply to data
-            **kwargs: Additional filtering options
-                - top: Number of top elements to consider per level (default: 5)
-                - min_value: Minimum count for a node to be included
-                - min_percentage: Minimum percentage for a node to be included
-                - max_value: Maximum count for a node to be included
-                - max_percentage: Maximum percentage for a node to be included
-                - min_depth: Minimum depth for nodes to be included
-                - max_depth: Maximum depth to analyze (limits tree depth)
-                - contains: Node name must contain this text
-                - exclude: Node name must NOT contain these texts
-                - regex: Node name must match this regex pattern
+            input: TreeInput containing data, fields, and optional query
+            options: TreeOptions containing filtering and display options
 
         Returns:
-            Dictionary representing the hierarchical tree structure
+            TreeOutput dataclass representing the hierarchical tree structure
 
         Example:
-            {
-                'name': 'root',
-                'children': [
-                    {
-                        'name': 'country=US',
-                        'value': 150,
-                        'percentage': 75.0,
-                        'node': 1,
-                        'children': [
-                            {
-                                'name': 'device=mobile',
-                                'value': 120,
-                                'percentage': 60.0,
-                                'node': 2
-                            }
-                        ]
-                    }
-                ],
-                'value': 200,
-                'percentage': 100.0,
-                'node': 0,
-                'top': 5
-            }
+            tree_input = TreeInput(
+                data=[{'country': 'US', 'device': 'mobile'}],
+                fields=['country', 'device']
+            )
+            tree_options = TreeOptions(top=10, max_depth=3)
+            result = dataspot.tree(tree_input, tree_options)
 
         """
         tree = Tree()
         tree.preprocessors = self._base.preprocessors
-        return tree.execute(data, fields, query, **kwargs)
+        return tree.execute(input, options)
 
     def discover(
         self,
