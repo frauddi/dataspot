@@ -95,11 +95,19 @@ class TestDataspotFind:
 
     def test_find_preprocessor_sharing(self):
         """Test that preprocessors are applied in find."""
+        # Use lowercase data to test uppercase preprocessor
+        test_data_lowercase = [
+            {"country": "us", "device": "mobile", "amount": 100},
+            {"country": "us", "device": "mobile", "amount": 150},
+            {"country": "eu", "device": "desktop", "amount": 200},
+            {"country": "eu", "device": "mobile", "amount": 120},
+        ]
+
         # Add a preprocessor that converts to uppercase
         test_preprocessor = lambda x: x.upper() if isinstance(x, str) else x  # noqa: E731
         self.dataspot.add_preprocessor("country", test_preprocessor)
 
-        find_input = FindInput(data=self.test_data, fields=["country"])
+        find_input = FindInput(data=test_data_lowercase, fields=["country"])
         find_options = FindOptions()
         result = self.dataspot.find(find_input, find_options)
 
@@ -161,11 +169,19 @@ class TestDataspotAnalyze:
 
     def test_analyze_preprocessor_sharing(self):
         """Test that preprocessors are applied in analyze."""
+        # Use lowercase data to test uppercase preprocessor
+        test_data_lowercase = [
+            {"country": "us", "device": "mobile", "amount": 100},
+            {"country": "us", "device": "mobile", "amount": 150},
+            {"country": "eu", "device": "desktop", "amount": 200},
+            {"country": "eu", "device": "mobile", "amount": 120},
+        ]
+
         # Add a preprocessor that converts to uppercase
         test_preprocessor = lambda x: x.upper() if isinstance(x, str) else x  # noqa: E731
         self.dataspot.add_preprocessor("country", test_preprocessor)
 
-        analyze_input = AnalyzeInput(data=self.test_data, fields=["country"])
+        analyze_input = AnalyzeInput(data=test_data_lowercase, fields=["country"])
         analyze_options = AnalyzeOptions()
         result = self.dataspot.analyze(analyze_input, analyze_options)
 

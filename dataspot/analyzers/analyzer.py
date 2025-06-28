@@ -290,7 +290,9 @@ class Analyzer(Base):
             sort_by=options.sort_by,
             reverse=options.reverse,
         )
-        patterns = Finder().execute(find_input, find_options)
+        finder = Finder()
+        finder.preprocessor_manager = self.preprocessor_manager
+        patterns = finder.execute(find_input, find_options)
 
         # Calculate comprehensive statistics
         base_statistics = self._calculate_statistics(input.data, input.query)

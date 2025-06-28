@@ -271,7 +271,7 @@ class Dataspot:
 
         """
         finder = Finder()
-        finder.preprocessors = self._base.preprocessors
+        finder.preprocessor_manager = self._base.preprocessor_manager
         return finder.execute(input, options)
 
     def analyze(
@@ -357,7 +357,7 @@ class Dataspot:
 
         """
         analyzer = Analyzer()
-        analyzer.preprocessors = self._base.preprocessors
+        analyzer.preprocessor_manager = self._base.preprocessor_manager
         return analyzer.execute(input, options)
 
     def tree(
@@ -453,7 +453,7 @@ class Dataspot:
 
         """
         tree = Tree()
-        tree.preprocessors = self._base.preprocessors
+        tree.preprocessor_manager = self._base.preprocessor_manager
         return tree.execute(input, options)
 
     def discover(
@@ -554,7 +554,7 @@ class Dataspot:
 
         """
         discovery = Discovery()
-        discovery.preprocessors = self._base.preprocessors
+        discovery.preprocessor_manager = self._base.preprocessor_manager
         return discovery.execute(input, options)
 
     def compare(
@@ -663,5 +663,5 @@ class Dataspot:
 
         """
         compare = Compare()
-        compare.preprocessors = self._base.preprocessors
+        compare.preprocessor_manager = self._base.preprocessor_manager
         return compare.execute(input, options)
