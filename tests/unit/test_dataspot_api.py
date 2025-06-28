@@ -6,7 +6,7 @@ methods and their integration with the underlying analyzer classes.
 
 from dataspot.core import Dataspot
 from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
-from dataspot.models.discovery import DiscoverOutput
+from dataspot.models.discovery import DiscoverInput, DiscoverOptions, DiscoverOutput
 from dataspot.models.finder import FindInput, FindOptions, FindOutput
 from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
 
@@ -260,7 +260,9 @@ class TestDataspotDiscover:
 
     def test_discover_basic(self):
         """Test basic discover functionality."""
-        result = self.dataspot.discover(self.test_data)
+        discover_input = DiscoverInput(data=self.test_data)
+        discover_options = DiscoverOptions()
+        result = self.dataspot.discover(discover_input, discover_options)
 
         # Should return DiscoverOutput dataclass
         assert isinstance(result, DiscoverOutput)
@@ -276,12 +278,13 @@ class TestDataspotDiscover:
 
     def test_discover_with_parameters(self):
         """Test discover with custom parameters."""
-        result = self.dataspot.discover(
-            self.test_data,
+        discover_input = DiscoverInput(data=self.test_data)
+        discover_options = DiscoverOptions(
             max_fields=2,
             max_combinations=5,
             min_percentage=15.0,
         )
+        result = self.dataspot.discover(discover_input, discover_options)
 
         assert hasattr(result, "top_patterns")
         assert hasattr(result, "field_ranking")
@@ -297,7 +300,9 @@ class TestDataspotDiscover:
         test_preprocessor = lambda x: x.strip().lower() if isinstance(x, str) else x  # noqa: E731
         self.dataspot.add_preprocessor("country", test_preprocessor)
 
-        result = self.dataspot.discover(self.test_data)
+        discover_input = DiscoverInput(data=self.test_data)
+        discover_options = DiscoverOptions()
+        result = self.dataspot.discover(discover_input, discover_options)
 
         # Should apply preprocessor - patterns should have lowercase country values
         for pattern in result.top_patterns:
@@ -307,6 +312,19 @@ class TestDataspotDiscover:
                     "country=us" in pattern.path.lower()
                     or "country=eu" in pattern.path.lower()
                 )
+
+    def test_discover_extreme_parameters(self):
+        """Test discover with extreme parameters."""
+        # Very high min_percentage should find few patterns
+        discover_input = DiscoverInput(data=self.test_data)
+        discover_options = DiscoverOptions(
+            max_fields=1, max_combinations=1, min_percentage=99.0
+        )
+        result = self.dataspot.discover(discover_input, discover_options)
+
+        assert isinstance(result.top_patterns, list)
+        # With very high min_percentage, should find few or no patterns
+        assert len(result.top_patterns) <= 5
 
 
 class TestDataspotIntegration:
@@ -339,7 +357,10 @@ class TestDataspotIntegration:
         tree_input = TreeInput(data=test_data, fields=["field1"])
         tree_options = TreeOptions()
         tree_result = self.dataspot.tree(tree_input, tree_options)
-        discover_result = self.dataspot.discover(test_data)
+
+        discover_input = DiscoverInput(data=test_data)
+        discover_options = DiscoverOptions()
+        discover_result = self.dataspot.discover(discover_input, discover_options)
 
         # All should return valid results
         assert isinstance(find_result, FindOutput)
@@ -424,17 +445,6 @@ class TestDataspotEdgeCases:
         # Should use the last one added (preprocessor2)
         assert self.dataspot._base.preprocessors["field"] == preprocessor2
 
-    def test_discover_extreme_parameters(self):
-        """Test discover with extreme parameters."""
-        # Very high min_percentage should find few patterns
-        result = self.dataspot.discover(
-            self.test_data, max_fields=1, max_combinations=1, min_percentage=99.0
-        )
-
-        assert isinstance(result.top_patterns, list)
-        # With very high min_percentage, should find few or no patterns
-        assert len(result.top_patterns) <= 5
-
     def test_invalid_preprocessor_handling(self):
         """Test handling of invalid preprocessor functions."""
 
@@ -485,7 +495,9 @@ class TestDataspotDocumentationExamples:
     def test_discovery_usage_example(self):
         """Test the discovery usage example from documentation."""
         # Test discovery example
-        result = self.dataspot.discover(self.test_data)
+        discover_input = DiscoverInput(data=self.test_data)
+        discover_options = DiscoverOptions()
+        result = self.dataspot.discover(discover_input, discover_options)
 
         # Should return expected structure
         assert isinstance(result, DiscoverOutput)

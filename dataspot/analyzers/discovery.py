@@ -1,10 +1,12 @@
 """Pattern discovery for automatic field analysis and pattern finding."""
 
 from itertools import combinations
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from ..models.discovery import (
     CombinationTried,
+    DiscoverInput,
+    DiscoverOptions,
     DiscoverOutput,
     DiscoveryStatistics,
     FieldRanking,
@@ -24,45 +26,35 @@ class Discovery(Base):
 
     def execute(
         self,
-        data: List[Dict[str, Any]],
-        max_fields: int = 3,
-        max_combinations: int = 10,
-        min_percentage: float = 10.0,
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: DiscoverInput,
+        options: DiscoverOptions,
     ) -> DiscoverOutput:
         """Automatically discover the most interesting concentration patterns.
 
         Args:
-            data: List of records (dictionaries)
-            max_fields: Maximum number of fields to combine (default: 3)
-            max_combinations: Maximum combinations to try (default: 10)
-            min_percentage: Minimum concentration to consider (default: 10%)
-            query: Optional filters to apply to data
-            **kwargs: Additional filtering options
+            input: DiscoverInput containing data and optional query
+            options: DiscoverOptions containing discovery and filtering parameters
 
         Returns:
             DiscoverOutput dataclass with discovered patterns and field analysis.
 
         """
-        self._validate_data(data)
+        self._validate_data(input.data)
 
-        if query:
-            data = self._filter_data_by_query(data, query)
+        data = input.data
+        if input.query:
+            data = self._filter_data_by_query(data, input.query)
 
         if not data:
             return self._build_empty_discovery_result()
 
         available_fields = self._detect_categorical_fields(data)
-        field_scores = self._score_fields_by_potential(data, available_fields, **kwargs)
+        field_scores = self._score_fields_by_potential(data, available_fields, options)
 
         all_patterns, combinations_tried_data = self._discover_pattern_combinations(
             data,
             field_scores,
-            max_fields,
-            max_combinations,
-            min_percentage,
-            **kwargs,
+            options,
         )
 
         top_patterns = self._rank_and_deduplicate_patterns(all_patterns)
@@ -145,10 +137,10 @@ class Discovery(Base):
     def _is_suitable_for_analysis(
         self, data: List[Dict[str, Any]], field: str, sample_size: int
     ) -> bool:
-        """Check if a field is suitable for categorical analysis.
+        """Check if a field is suitable for pattern analysis.
 
         Args:
-            data: Input data
+            data: Input data records
             field: Field name to check
             sample_size: Number of records to sample
 
@@ -156,44 +148,40 @@ class Discovery(Base):
             True if field is suitable for analysis
 
         """
-        values = []
-        for record in data[:sample_size]:
-            value = record.get(field)
-            if value is not None:
-                values.append(str(value))
+        values = [record.get(field) for record in data[:sample_size]]
+        non_null_values = [v for v in values if v is not None]
 
-        if not values:
+        if len(non_null_values) < 2:
             return False
 
-        unique_values = set(values)
-        unique_ratio = len(unique_values) / len(values)
+        # Check cardinality - too many unique values might not be useful
+        unique_values = len({str(v) for v in non_null_values})
+        total_values = len(non_null_values)
+        unique_ratio = unique_values / total_values
 
-        # Criteria for categorical fields useful for concentration analysis
-
-        # Fields with only one unique value are not useful for concentration analysis
-        # (they always show 100% concentration)
-        if len(unique_values) <= 1:
+        # Skip if only one unique value
+        if unique_values <= 1:
             return False
 
         # For very small samples, be more lenient but still require variation
-        if len(values) <= 5:
-            return len(unique_values) >= 2  # At least some variation
+        if total_values <= 5:
+            return unique_values >= 2  # At least some variation
 
         return (
-            len(unique_values) >= 2  # At least 2 different values
-            and len(unique_values) <= len(values) * 0.8  # Not too many unique values
+            unique_values >= 2  # At least 2 different values
+            and unique_values <= total_values * 0.8  # Not too many unique values
             and unique_ratio < 0.95  # Not mostly unique (like IDs)
         )
 
     def _score_fields_by_potential(
-        self, data: List[Dict[str, Any]], fields: List[str], **kwargs
+        self, data: List[Dict[str, Any]], fields: List[str], options: DiscoverOptions
     ) -> List[Tuple[str, float]]:
         """Score fields by their concentration potential.
 
         Args:
             data: Input data records
             fields: Fields to score
-            **kwargs: Additional options
+            options: Discovery options containing filtering parameters
 
         Returns:
             List of (field_name, score) tuples sorted by score
@@ -205,7 +193,20 @@ class Discovery(Base):
         for field in fields:
             try:
                 find_input = FindInput(data=data, fields=[field])
-                find_options = FindOptions(min_percentage=5.0, **kwargs)
+                find_options = FindOptions(
+                    min_percentage=5.0,
+                    max_percentage=options.max_percentage,
+                    min_count=options.min_count,
+                    max_count=options.max_count,
+                    min_depth=options.min_depth,
+                    max_depth=options.max_depth,
+                    contains=options.contains,
+                    exclude=options.exclude,
+                    regex=options.regex,
+                    limit=options.limit,
+                    sort_by=options.sort_by,
+                    reverse=options.reverse,
+                )
                 patterns = pattern_finder.execute(find_input, find_options)
                 score = self._calculate_field_score(patterns.patterns)
                 field_scores.append((field, score))
@@ -242,20 +243,14 @@ class Discovery(Base):
         self,
         data: List[Dict[str, Any]],
         field_scores: List[Tuple[str, float]],
-        max_fields: int,
-        max_combinations: int,
-        min_percentage: float,
-        **kwargs,
+        options: DiscoverOptions,
     ) -> Tuple[List[Pattern], List[Dict[str, Any]]]:
         """Discover patterns using different field combinations.
 
         Args:
             data: Input data
             field_scores: Scored fields
-            max_fields: Maximum fields to combine
-            max_combinations: Maximum combinations to try
-            min_percentage: Minimum concentration threshold
-            **kwargs: Additional options
+            options: Discovery options containing max_fields, max_combinations, and other parameters
 
         Returns:
             Tuple of (all_patterns, combinations_tried)
@@ -268,13 +263,28 @@ class Discovery(Base):
         # Get top fields for combinations
         top_fields = [
             field
-            for field, score in field_scores[: min(max_fields + 2, len(field_scores))]
+            for field, score in field_scores[
+                : min(options.max_fields + 2, len(field_scores))
+            ]
         ]
 
         # Try single fields first
-        for field in top_fields[:max_fields]:
+        for field in top_fields[: options.max_fields]:
             find_input = FindInput(data=data, fields=[field])
-            find_options = FindOptions(min_percentage=min_percentage, **kwargs)
+            find_options = FindOptions(
+                min_percentage=options.min_percentage,
+                max_percentage=options.max_percentage,
+                min_count=options.min_count,
+                max_count=options.max_count,
+                min_depth=options.min_depth,
+                max_depth=options.max_depth,
+                contains=options.contains,
+                exclude=options.exclude,
+                regex=options.regex,
+                limit=options.limit,
+                sort_by=options.sort_by,
+                reverse=options.reverse,
+            )
             patterns = finder.execute(find_input, find_options)
             if patterns:
                 all_patterns.extend(patterns.patterns)
@@ -283,12 +293,25 @@ class Discovery(Base):
                 )
 
         # Try field combinations (2-field, 3-field, etc.)
-        for combo_size in range(2, min(max_fields + 1, len(top_fields) + 1)):
+        for combo_size in range(2, min(options.max_fields + 1, len(top_fields) + 1)):
             field_combinations = list(combinations(top_fields, combo_size))
 
-            for fields_combo in field_combinations[:max_combinations]:
+            for fields_combo in field_combinations[: options.max_combinations]:
                 find_input = FindInput(data=data, fields=list(fields_combo))
-                find_options = FindOptions(min_percentage=min_percentage, **kwargs)
+                find_options = FindOptions(
+                    min_percentage=options.min_percentage,
+                    max_percentage=options.max_percentage,
+                    min_count=options.min_count,
+                    max_count=options.max_count,
+                    min_depth=options.min_depth,
+                    max_depth=options.max_depth,
+                    contains=options.contains,
+                    exclude=options.exclude,
+                    regex=options.regex,
+                    limit=options.limit,
+                    sort_by=options.sort_by,
+                    reverse=options.reverse,
+                )
                 patterns = finder.execute(find_input, find_options)
                 if patterns:
                     all_patterns.extend(patterns.patterns)

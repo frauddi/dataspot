@@ -17,6 +17,7 @@ from dataspot.exceptions import (
     ValidationError,
 )
 from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
+from dataspot.models.discovery import DiscoverInput, DiscoverOptions, DiscoverOutput
 from dataspot.models.finder import FindInput, FindOptions, FindOutput
 from dataspot.models.pattern import Pattern
 from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
@@ -74,7 +75,9 @@ def tree(data, fields, query=None, **kwargs):
 def discover(data, **kwargs):
     """Quick function to discover patterns."""
     dataspot = Dataspot()
-    return dataspot.discover(data, **kwargs)
+    discover_input = DiscoverInput(data=data, query=kwargs.pop("query", None))
+    discover_options = DiscoverOptions(**kwargs)
+    return dataspot.discover(discover_input, discover_options)
 
 
 def compare(current_data, baseline_data, fields, **kwargs):
@@ -92,6 +95,10 @@ __all__ = [
     "AnalyzeInput",
     "AnalyzeOptions",
     "AnalyzeOutput",
+    # Discover models
+    "DiscoverInput",
+    "DiscoverOptions",
+    "DiscoverOutput",
     # Find models
     "FindInput",
     "FindOptions",

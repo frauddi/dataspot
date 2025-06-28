@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 from .analyzers import Analyzer, Base, Compare, Discovery, Tree
 from .models.analyzer import AnalyzeInput, AnalyzeOptions, AnalyzeOutput
 from .models.compare import CompareOutput
-from .models.discovery import DiscoverOutput
+from .models.discovery import DiscoverInput, DiscoverOptions, DiscoverOutput
 from .models.finder import FindInput, FindOptions, FindOutput
 from .models.tree import TreeInput, TreeOptions, TreeOutput
 
@@ -96,12 +96,8 @@ class Dataspot:
 
     def discover(
         self,
-        data: List[Dict[str, Any]],
-        max_fields: int = 3,
-        max_combinations: int = 10,
-        min_percentage: float = 10.0,
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: DiscoverInput,
+        options: DiscoverOptions,
     ) -> DiscoverOutput:
         """Automatically discover the most interesting concentration patterns.
 
@@ -109,27 +105,23 @@ class Dataspot:
         the combinations that show the highest concentration patterns.
 
         Args:
-            data: List of records (dictionaries)
-            max_fields: Maximum number of fields to combine (default: 3)
-            max_combinations: Maximum combinations to try (default: 10)
-            min_percentage: Minimum concentration to consider (default: 10%)
-            query: Optional filters to apply to data
-            **kwargs: Additional filtering options (same as find method)
+            input: DiscoverInput containing data and optional query
+            options: DiscoverOptions containing discovery and filtering parameters
 
         Returns:
-            Dictionary with discovered patterns and field analysis.
+            DiscoverOutput dataclass with discovered patterns and field analysis.
 
         Example:
-            results = dataspot.discover(data)
-            print(f"Best pattern: {results['top_patterns'][0].path}")
-            print(f"Most valuable fields: {results['field_ranking']}")
+            discover_input = DiscoverInput(data=data)
+            discover_options = DiscoverOptions(max_fields=3, min_percentage=15.0)
+            results = dataspot.discover(discover_input, discover_options)
+            print(f"Best pattern: {results.top_patterns[0].path}")
+            print(f"Most valuable fields: {results.field_ranking}")
 
         """
         discovery = Discovery()
         discovery.preprocessors = self._base.preprocessors
-        return discovery.execute(
-            data, max_fields, max_combinations, min_percentage, query, **kwargs
-        )
+        return discovery.execute(input, options)
 
     def compare(
         self,

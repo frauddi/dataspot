@@ -1,9 +1,40 @@
 """Models for discovery analyzer (discover method) response structures."""
 
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .pattern import Pattern
+
+
+@dataclass
+class DiscoverInput:
+    """Input model for the discover() method."""
+
+    data: List[Dict[str, Any]]  # List of records (dictionaries) to analyze
+    query: Optional[Dict[str, Any]] = None  # Optional filters to apply to data
+
+
+@dataclass
+class DiscoverOptions:
+    """Options model for the discover() method."""
+
+    max_fields: int = 3  # Maximum number of fields to combine (default: 3)
+    max_combinations: int = 10  # Maximum combinations to try (default: 10)
+    min_percentage: float = 10.0  # Minimum concentration to consider (default: 10%)
+    # Additional filtering options (same as find method)
+    max_percentage: Optional[float] = None  # Maximum concentration percentage threshold
+    min_count: Optional[int] = None  # Minimum record count per pattern
+    max_count: Optional[int] = None  # Maximum record count per pattern
+    min_depth: Optional[int] = None  # Minimum depth for patterns to be included
+    max_depth: Optional[int] = None  # Maximum depth for patterns to be included
+    contains: Optional[str] = None  # Pattern path must contain this text
+    exclude: Optional[List[str]] = None  # Pattern path must NOT contain these texts
+    regex: Optional[str] = None  # Pattern path must match this regex pattern
+    limit: Optional[int] = None  # Maximum number of patterns to return
+    sort_by: Optional[str] = None  # Sort field: 'percentage', 'count', 'depth'
+    reverse: Optional[bool] = (
+        None  # Sort in descending order (True) or ascending (False)
+    )
 
 
 @dataclass
