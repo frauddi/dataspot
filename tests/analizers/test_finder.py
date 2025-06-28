@@ -9,7 +9,7 @@ import pytest
 from dataspot.analyzers.finder import Finder
 from dataspot.exceptions import DataspotError
 from dataspot.models import Pattern
-from dataspot.models.finder import FindOutput
+from dataspot.models.finder import FindInput, FindOptions, FindOutput
 
 
 class TestFinderCore:
@@ -27,7 +27,9 @@ class TestFinderCore:
 
     def test_execute_with_empty_data(self):
         """Test execute method with empty data."""
-        result = self.finder.execute([], ["field1", "field2"])
+        find_input = FindInput(data=[], fields=["field1", "field2"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) == 0
@@ -36,8 +38,9 @@ class TestFinderCore:
 
     def test_execute_with_empty_fields(self):
         """Test execute method with empty fields list."""
-        data = [{"a": 1, "b": 2}]
-        result = self.finder.execute(data, [])
+        find_input = FindInput(data=[{"a": 1, "b": 2}], fields=[])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) == 0
@@ -46,8 +49,10 @@ class TestFinderCore:
 
     def test_execute_with_invalid_data(self):
         """Test execute method with invalid data."""
+        find_input = FindInput(data=None, fields=["field1"])  # type: ignore
+        find_options = FindOptions()
         with pytest.raises(DataspotError, match="Data must be a list of dictionaries"):
-            self.finder.execute(None, ["field1"])  # type: ignore
+            self.finder.execute(find_input, find_options)
 
     def test_execute_basic_pattern_finding(self):
         """Test basic pattern finding functionality."""
@@ -57,7 +62,9 @@ class TestFinderCore:
             {"country": "EU", "device": "mobile"},
         ]
 
-        result = self.finder.execute(data, ["country", "device"])
+        find_input = FindInput(data=data, fields=["country", "device"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) > 0
@@ -78,8 +85,11 @@ class TestFinderCore:
         ]
 
         # Filter to only active records
-        query = {"active": True}
-        result = self.finder.execute(data, ["country", "device"], query=query)
+        find_input = FindInput(
+            data=data, fields=["country", "device"], query={"active": True}
+        )
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) > 0
@@ -100,7 +110,9 @@ class TestFinderCore:
         ]
 
         # Filter to only patterns with at least 50% concentration
-        result = self.finder.execute(data, ["country", "device"], min_percentage=50)
+        find_input = FindInput(data=data, fields=["country", "device"])
+        find_options = FindOptions(min_percentage=50)
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert all(p.percentage >= 50 for p in result.patterns)
@@ -116,7 +128,9 @@ class TestFinderCore:
             {"country": "EU", "device": "desktop"},
         ]
 
-        result = self.finder.execute(data, ["country", "device"], limit=2)
+        find_input = FindInput(data=data, fields=["country", "device"])
+        find_options = FindOptions(limit=2)
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) <= 2
@@ -140,7 +154,9 @@ class TestFinderIntegration:
         ]
 
         # This tests the integration with _build_tree
-        result = self.finder.execute(data, ["a", "b"])
+        find_input = FindInput(data=data, fields=["a", "b"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) > 0
@@ -161,7 +177,9 @@ class TestFinderIntegration:
             {"x": "value2", "y": "test"},
         ]
 
-        result = self.finder.execute(data, ["x", "y"])
+        find_input = FindInput(data=data, fields=["x", "y"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         # Check that pattern extraction works correctly
         assert isinstance(result, FindOutput)
@@ -189,10 +207,12 @@ class TestFinderIntegration:
         ]
 
         # Test various filter combinations
-        result_min_count = self.finder.execute(data, ["category", "type"], min_count=1)
-        result_max_count = self.finder.execute(data, ["category", "type"], max_count=2)
+        find_input = FindInput(data=data, fields=["category", "type"])
+
+        result_min_count = self.finder.execute(find_input, FindOptions(min_count=1))
+        result_max_count = self.finder.execute(find_input, FindOptions(max_count=2))
         result_min_percentage = self.finder.execute(
-            data, ["category", "type"], min_percentage=30
+            find_input, FindOptions(min_percentage=30)
         )
 
         assert isinstance(result_min_count, FindOutput)
@@ -210,7 +230,9 @@ class TestFinderIntegration:
             {"email": "jane.smith@company.com", "type": "admin"},
         ]
 
-        result = self.finder.execute(data, ["email", "type"])
+        find_input = FindInput(data=data, fields=["email", "type"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert result.total_records == 2
@@ -242,7 +264,9 @@ class TestFinderEdgeCases:
             {"field1": "test", "field2": "value"},
         ]
 
-        result = self.finder.execute(data, ["field1", "field2"])
+        find_input = FindInput(data=data, fields=["field1", "field2"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) > 0
@@ -259,7 +283,9 @@ class TestFinderEdgeCases:
             {"field1": True, "field2": [1, 2, 3]},
         ]
 
-        result = self.finder.execute(data, ["field1", "field2"])
+        find_input = FindInput(data=data, fields=["field1", "field2"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         # Should handle mixed types without crashing
@@ -271,7 +297,9 @@ class TestFinderEdgeCases:
             {"category": f"cat_{i % 10}", "value": f"val_{i % 5}"} for i in range(1000)
         ]
 
-        result = self.finder.execute(data, ["category", "value"])
+        find_input = FindInput(data=data, fields=["category", "value"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) > 0
@@ -287,7 +315,9 @@ class TestFinderEdgeCases:
             {"país": "España", "categoría": "marketing"},
         ]
 
-        result = self.finder.execute(data, ["país", "categoría"])
+        find_input = FindInput(data=data, fields=["país", "categoría"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert len(result.patterns) > 0
@@ -304,7 +334,9 @@ class TestFinderEdgeCases:
             {"field1": "", "field2": ""},
         ]
 
-        result = self.finder.execute(data, ["field1", "field2"])
+        find_input = FindInput(data=data, fields=["field1", "field2"])
+        find_options = FindOptions()
+        result = self.finder.execute(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         # Should handle empty strings gracefully

@@ -86,7 +86,7 @@ class TestDiscoveryExecute:
         mock_finder_class.return_value = mock_finder
 
         result = self.discovery.execute(
-            self.test_data, max_fields=2, max_combinations=5, min_concentration=20.0
+            self.test_data, max_fields=2, max_combinations=5, min_percentage=20.0
         )
 
         # Should use custom parameters

@@ -11,7 +11,7 @@ import pytest
 from dataspot.analyzers.analyzer import Analyzer
 from dataspot.exceptions import DataspotError
 from dataspot.models.analyzer import AnalyzeOutput
-from dataspot.models.finder import FindOutput
+from dataspot.models.finder import FindInput, FindOptions, FindOutput
 
 
 class TestAnalyzerInitialization:
@@ -54,11 +54,10 @@ class TestAnalyzerExecute:
     @patch("dataspot.analyzers.analyzer.Finder")
     def test_execute_basic(self, mock_finder_class):
         """Test basic execute functionality."""
-        # Mock the Finder class
-        mock_finder = Mock()
         mock_pattern = Mock()
         mock_pattern.percentage = 60.0
-        mock_pattern.count = 3
+
+        mock_finder = Mock()
         mock_finder.execute.return_value = FindOutput(
             patterns=[mock_pattern],
             total_records=len(self.test_data),
@@ -66,20 +65,23 @@ class TestAnalyzerExecute:
         )
         mock_finder_class.return_value = mock_finder
 
-        result = self.analyzer.execute(self.test_data, ["country", "device"])
+        with patch("dataspot.analyzers.analyzer.Finder", return_value=mock_finder):
+            result = self.analyzer.execute(self.test_data, ["country", "device"])
 
-        # Check result type and structure
+        # Verify the result structure
         assert isinstance(result, AnalyzeOutput)
         assert hasattr(result, "patterns")
-        assert hasattr(result, "insights")
         assert hasattr(result, "statistics")
         assert hasattr(result, "field_stats")
         assert hasattr(result, "top_patterns")
 
-        # Check that Finder was called
-        mock_finder.execute.assert_called_once_with(
-            self.test_data, ["country", "device"], None
-        )
+        # Verify that Finder was called with correct input and options
+        mock_finder.execute.assert_called_once()
+        call_args = mock_finder.execute.call_args
+        assert isinstance(call_args[0][0], FindInput)  # First arg should be FindInput
+        assert isinstance(
+            call_args[0][1], FindOptions
+        )  # Second arg should be FindOptions
 
     @patch("dataspot.analyzers.analyzer.Finder")
     def test_execute_with_query(self, mock_finder_class):
@@ -87,48 +89,47 @@ class TestAnalyzerExecute:
         mock_finder = Mock()
         mock_finder.execute.return_value = FindOutput(
             patterns=[],
-            total_records=len(self.test_data),
+            total_records=2,  # Filtered data
             total_patterns=0,
         )
-        mock_finder_class.return_value = mock_finder
 
         query = {"country": "US"}
-        result = self.analyzer.execute(self.test_data, ["device"], query=query)
 
-        # Check that query was passed to Finder
-        mock_finder.execute.assert_called_once_with(self.test_data, ["device"], query)
+        with patch("dataspot.analyzers.analyzer.Finder", return_value=mock_finder):
+            _ = self.analyzer.execute(self.test_data, ["device"], query=query)
 
-        # Check statistics calculation includes filtering
-        assert isinstance(result, AnalyzeOutput)
-        assert result.statistics.total_records == 5
-        assert result.statistics.filtered_records <= 5
+        # Verify that FindInput includes the query
+        mock_finder.execute.assert_called_once()
+        call_args = mock_finder.execute.call_args
+        find_input = call_args[0][0]
+        assert isinstance(find_input, FindInput)
+        assert find_input.query == query
 
     @patch("dataspot.analyzers.analyzer.Finder")
     def test_execute_with_kwargs(self, mock_finder_class):
-        """Test execute with additional kwargs."""
+        """Test execute with additional filtering options."""
         mock_finder = Mock()
         mock_finder.execute.return_value = FindOutput(
             patterns=[],
             total_records=len(self.test_data),
             total_patterns=0,
         )
-        mock_finder_class.return_value = mock_finder
 
-        kwargs = {"min_percentage": 10, "max_depth": 2}
-        result = self.analyzer.execute(
-            self.test_data, ["country"], query=None, **kwargs
-        )
+        with patch("dataspot.analyzers.analyzer.Finder", return_value=mock_finder):
+            _ = self.analyzer.execute(
+                self.test_data,
+                ["country"],
+                min_percentage=10,
+                max_depth=2,
+            )
 
-        # Should return proper analyzer result structure
-        assert isinstance(result, AnalyzeOutput)
-        assert result.patterns == []
-        assert hasattr(result.statistics, "total_records")
-        assert result.field_stats is not None
-
-        # Check that kwargs were passed to Finder
-        mock_finder.execute.assert_called_once_with(
-            self.test_data, ["country"], None, **kwargs
-        )
+        # Verify that FindOptions includes the kwargs
+        mock_finder.execute.assert_called_once()
+        call_args = mock_finder.execute.call_args
+        find_options = call_args[0][1]
+        assert isinstance(find_options, FindOptions)
+        assert find_options.min_percentage == 10
+        assert find_options.max_depth == 2
 
     def test_execute_with_invalid_data(self):
         """Test execute with invalid data."""

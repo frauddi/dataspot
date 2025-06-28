@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 from ..models.compare import ChangeItem, CompareOutput, ComparisonStatistics
+from ..models.finder import FindInput, FindOptions
 from .base import Base
 from .stats import Stats
 
@@ -139,7 +140,9 @@ class Compare(Base):
         finder = Finder()
         finder.preprocessors = self.preprocessors
 
-        patterns = finder.execute(data, fields, **kwargs)
+        find_input = FindInput(data=data, fields=fields)
+        find_options = FindOptions(**kwargs)
+        patterns = finder.execute(find_input, find_options)
 
         # Convert to dictionary for easier comparison
         pattern_dict = {}

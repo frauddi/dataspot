@@ -9,6 +9,7 @@ from ..models.discovery import (
     DiscoveryStatistics,
     FieldRanking,
 )
+from ..models.finder import FindInput, FindOptions
 from ..models.pattern import Pattern
 from .base import Base
 from .finder import Finder
@@ -203,9 +204,9 @@ class Discovery(Base):
 
         for field in fields:
             try:
-                patterns = pattern_finder.execute(
-                    data, [field], min_percentage=5.0, **kwargs
-                )
+                find_input = FindInput(data=data, fields=[field])
+                find_options = FindOptions(min_percentage=5.0, **kwargs)
+                patterns = pattern_finder.execute(find_input, find_options)
                 score = self._calculate_field_score(patterns.patterns)
                 field_scores.append((field, score))
             except Exception:
@@ -272,9 +273,9 @@ class Discovery(Base):
 
         # Try single fields first
         for field in top_fields[:max_fields]:
-            patterns = finder.execute(
-                data, [field], min_percentage=min_percentage, **kwargs
-            )
+            find_input = FindInput(data=data, fields=[field])
+            find_options = FindOptions(min_percentage=min_percentage, **kwargs)
+            patterns = finder.execute(find_input, find_options)
             if patterns:
                 all_patterns.extend(patterns.patterns)
                 combinations_tried.append(
@@ -286,9 +287,9 @@ class Discovery(Base):
             field_combinations = list(combinations(top_fields, combo_size))
 
             for fields_combo in field_combinations[:max_combinations]:
-                patterns = finder.execute(
-                    data, list(fields_combo), min_percentage=min_percentage, **kwargs
-                )
+                find_input = FindInput(data=data, fields=list(fields_combo))
+                find_options = FindOptions(min_percentage=min_percentage, **kwargs)
+                patterns = finder.execute(find_input, find_options)
                 if patterns:
                     all_patterns.extend(patterns.patterns)
                     combinations_tried.append(

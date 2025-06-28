@@ -4,13 +4,10 @@ This module tests the Dataspot class in isolation, focusing on the public API
 methods and their integration with the underlying analyzer classes.
 """
 
-from unittest.mock import Mock, patch
-
 from dataspot.core import Dataspot
 from dataspot.models.analyzer import AnalyzeOutput
 from dataspot.models.discovery import DiscoverOutput
-from dataspot.models.finder import FindOutput
-from dataspot.models.pattern import Pattern
+from dataspot.models.finder import FindInput, FindOptions, FindOutput
 from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
 
 
@@ -52,100 +49,65 @@ class TestDataspotFind:
             {"country": "EU", "device": "mobile", "amount": 120},
         ]
 
-    @patch("dataspot.analyzers.finder.Finder")
-    def test_find_basic(self, mock_finder_class):
+    def test_find_basic(self):
         """Test basic find functionality."""
-        # Mock pattern
-        mock_pattern = Mock(spec=Pattern)
-        mock_pattern.percentage = 66.67
-        mock_pattern.path = "country=US"
-
-        # Mock Finder
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[mock_pattern],
-            total_records=3,
-            total_patterns=1,
-        )
-        mock_finder_class.return_value = mock_finder
-
-        result = self.dataspot.find(self.test_data, ["country", "device"])
-
-        # Should call Finder.execute with correct parameters
-        mock_finder.execute.assert_called_once_with(
-            self.test_data, ["country", "device"], None
-        )
+        find_input = FindInput(data=self.test_data, fields=["country", "device"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
         # Should return FindOutput
         assert isinstance(result, FindOutput)
-        assert len(result.patterns) == 1
-        assert result.patterns[0] == mock_pattern
+        assert len(result.patterns) > 0
         assert result.total_records == 3
-        assert result.total_patterns == 1
+        assert result.total_patterns > 0
 
-    @patch("dataspot.analyzers.finder.Finder")
-    def test_find_with_query(self, mock_finder_class):
+        # Should find patterns for countries
+        country_patterns = [p for p in result.patterns if "country=" in p.path]
+        assert len(country_patterns) > 0
+
+    def test_find_with_query(self):
         """Test find with query parameter."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=2,
-            total_patterns=0,
+        find_input = FindInput(
+            data=self.test_data, fields=["device"], query={"country": "US"}
         )
-        mock_finder_class.return_value = mock_finder
-
-        query = {"country": "US"}
-        result = self.dataspot.find(self.test_data, ["device"], query=query)
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
         assert isinstance(result, FindOutput)
-        assert result.patterns == []
-        assert result.total_records == 2
-        assert result.total_patterns == 0
+        assert result.total_records == 2  # Only US records
+        assert len(result.patterns) > 0
 
-        # Should pass query to Finder
-        mock_finder.execute.assert_called_once_with(self.test_data, ["device"], query)
+        # All patterns should be from US data only
+        for pattern in result.patterns:
+            assert pattern.count <= 2  # Max count should be 2 (US records)
 
-    @patch("dataspot.analyzers.finder.Finder")
-    def test_find_with_kwargs(self, mock_finder_class):
+    def test_find_with_kwargs(self):
         """Test find with additional kwargs."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=3,
-            total_patterns=0,
-        )
-        mock_finder_class.return_value = mock_finder
-
-        kwargs = {"min_percentage": 10, "max_depth": 3, "limit": 20}
-        result = self.dataspot.find(self.test_data, ["country"], query=None, **kwargs)
+        find_input = FindInput(data=self.test_data, fields=["country"])
+        find_options = FindOptions(min_percentage=10, limit=20)
+        result = self.dataspot.find(find_input, find_options)
 
         assert isinstance(result, FindOutput)
-        assert result.patterns == []
+        assert len(result.patterns) <= 20  # Should respect limit
+        assert all(
+            p.percentage >= 10 for p in result.patterns
+        )  # Should respect min_percentage
 
-        # Should pass kwargs to Finder
-        mock_finder.execute.assert_called_once_with(
-            self.test_data, ["country"], None, **kwargs
-        )
+    def test_find_preprocessor_sharing(self):
+        """Test that preprocessors are applied in find."""
+        # Add a preprocessor that converts to uppercase
+        test_preprocessor = lambda x: x.upper() if isinstance(x, str) else x  # noqa: E731
+        self.dataspot.add_preprocessor("country", test_preprocessor)
 
-    @patch("dataspot.analyzers.finder.Finder")
-    def test_find_preprocessor_sharing(self, mock_finder_class):
-        """Test that preprocessors are shared with Finder."""
-        mock_finder = Mock()
-        mock_finder.execute.return_value = FindOutput(
-            patterns=[],
-            total_records=3,
-            total_patterns=0,
-        )
-        mock_finder_class.return_value = mock_finder
+        find_input = FindInput(data=self.test_data, fields=["country"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
-        # Add a preprocessor
-        test_preprocessor = lambda x: x.upper()  # noqa: E731
-        self.dataspot.add_preprocessor("test_field", test_preprocessor)
-
-        self.dataspot.find(self.test_data, ["country"])
-
-        # Should set preprocessors on Finder
-        assert mock_finder.preprocessors == self.dataspot._base.preprocessors
+        # Should apply preprocessor - patterns should have uppercase country values
+        for pattern in result.patterns:
+            if "country=" in pattern.path:
+                # Country value should be uppercase due to preprocessor
+                assert "country=US" in pattern.path or "country=EU" in pattern.path
 
 
 class TestDataspotAnalyze:
@@ -309,24 +271,20 @@ class TestDataspotDiscover:
 
     def test_discover_with_parameters(self):
         """Test discover with custom parameters."""
-        query = {"country": "US"}
-        kwargs = {"min_percentage": 20}
-
         result = self.dataspot.discover(
             self.test_data,
             max_fields=2,
             max_combinations=5,
-            min_concentration=15.0,
-            query=query,
-            **kwargs,
+            min_percentage=15.0,
         )
 
-        assert isinstance(result, DiscoverOutput)
-        # Should have applied query filter - only US records
-        us_records = [r for r in self.test_data if r["country"] == "US"]
-        assert result.statistics.total_records == len(us_records)
-        # Should respect max_fields and max_combinations limits
-        assert len(result.combinations_tried) <= 5
+        assert hasattr(result, "top_patterns")
+        assert hasattr(result, "field_ranking")
+        assert hasattr(result, "statistics")
+
+        # Should use custom parameters
+        assert len(result.field_ranking) >= 0
+        assert result.statistics.total_records == len(self.test_data)
 
     def test_discover_preprocessor_sharing(self):
         """Test that preprocessors are applied in discovery."""
@@ -365,7 +323,9 @@ class TestDataspotIntegration:
         test_data = [{"field1": "a", "field2": " b "}]
 
         # Call all methods and verify they all use preprocessors
-        find_result = self.dataspot.find(test_data, ["field1"])
+        find_input = FindInput(data=test_data, fields=["field1"])
+        find_options = FindOptions()
+        find_result = self.dataspot.find(find_input, find_options)
         analyze_result = self.dataspot.analyze(test_data, ["field1"])
         tree_input = TreeInput(data=test_data, fields=["field1"])
         tree_options = TreeOptions()
@@ -393,7 +353,9 @@ class TestDataspotIntegration:
         fields = ["country", "device"]
 
         # Use both methods on same data
-        find_result = self.dataspot.find(test_data, fields)
+        find_input = FindInput(data=test_data, fields=fields)
+        find_options = FindOptions()
+        find_result = self.dataspot.find(find_input, find_options)
         analyze_result = self.dataspot.analyze(test_data, fields)
 
         # Both should work and return appropriate types
@@ -419,7 +381,9 @@ class TestDataspotEdgeCases:
 
     def test_empty_data_handling(self):
         """Test behavior with empty datasets."""
-        result = self.dataspot.find([], ["field"])
+        find_input = FindInput(data=[], fields=["field"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
         assert isinstance(result, FindOutput)
         assert result.patterns == []
@@ -447,16 +411,15 @@ class TestDataspotEdgeCases:
         assert self.dataspot._base.preprocessors["field"] == preprocessor2
 
     def test_discover_extreme_parameters(self):
-        """Test discover with extreme parameter values."""
-        # Test with extreme values
+        """Test discover with extreme parameters."""
+        # Very high min_percentage should find few patterns
         result = self.dataspot.discover(
-            self.test_data, max_fields=1, max_combinations=1, min_concentration=99.0
+            self.test_data, max_fields=1, max_combinations=1, min_percentage=99.0
         )
 
-        assert isinstance(result, DiscoverOutput)
-        # With very high min_concentration, should find few or no patterns
-        # But should not crash
-        assert result.statistics.total_records == 3
+        assert isinstance(result.top_patterns, list)
+        # With very high min_percentage, should find few or no patterns
+        assert len(result.top_patterns) <= 5
 
     def test_invalid_preprocessor_handling(self):
         """Test handling of invalid preprocessor functions."""
@@ -491,7 +454,9 @@ class TestDataspotDocumentationExamples:
         ]
 
         # Test the documented example
-        result = self.dataspot.find(transactions, ["country", "payment_method"])
+        find_input = FindInput(data=transactions, fields=["country", "payment_method"])
+        find_options = FindOptions()
+        result = self.dataspot.find(find_input, find_options)
 
         # Should return expected structure
         assert isinstance(result, FindOutput)

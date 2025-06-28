@@ -6,7 +6,7 @@ from .analyzers import Analyzer, Base, Compare, Discovery, Tree
 from .models.analyzer import AnalyzeOutput
 from .models.compare import CompareOutput
 from .models.discovery import DiscoverOutput
-from .models.finder import FindOutput
+from .models.finder import FindInput, FindOptions, FindOutput
 from .models.tree import TreeInput, TreeOptions, TreeOutput
 
 
@@ -29,54 +29,24 @@ class Dataspot:
 
     def find(
         self,
-        data: List[Dict[str, Any]],
-        fields: List[str],
-        query: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        input: FindInput,
+        options: FindOptions,
     ) -> FindOutput:
         """Find concentration patterns in data.
 
-        This method discovers data concentration patterns across hierarchical field combinations.
-        It identifies where data naturally clusters and provides insights into distribution patterns.
-
         Args:
-            data: List of records (dictionaries) to analyze
-            fields: List of field names to analyze hierarchically (e.g., ['country', 'city', 'device'])
-            query: Optional filters to apply to data before analysis
-                Example: {'status': 'active', 'amount': {'$gt': 100}}
-            **kwargs: Additional filtering options:
-                - min_percentage (float): Minimum concentration threshold (default: 1.0)
-                - min_count (int): Minimum record count per pattern
-                - max_count (int): Maximum record count per pattern
-                - limit (int): Maximum number of patterns to return
+            input: FindInput containing data, fields, and optional query
+            options: FindOptions containing filtering and display options
 
         Returns:
-            FindOutput dataclass containing:
-                - patterns: List of Pattern objects with concentration data
-                - total_records: Number of records analyzed
-                - total_patterns: Number of patterns found
-
-        Example:
-            Basic pattern finding:
-            >>> patterns = ds.find(transactions, ['country', 'payment_method'])
-            >>> print(f"Found {patterns.total_patterns} patterns in {patterns.total_records} records")
-            >>> top_pattern = patterns.patterns[0]
-            >>> print(f"Top pattern: {top_pattern.path} ({top_pattern.percentage}%)")
-
-            Fraud detection example:
-            >>> suspicious_patterns = ds.find(
-            ...     fraud_data,
-            ...     ['ip_country', 'device_type', 'payment_method'],
-            ...     query={'risk_score': {'$gt': 0.7}},
-            ...     min_percentage=5.0
-            ... )
+            FindOutput dataclass with patterns and metadata
 
         """
         from .analyzers.finder import Finder
 
         finder = Finder()
         finder.preprocessors = self._base.preprocessors
-        return finder.execute(data, fields, query, **kwargs)
+        return finder.execute(input, options)
 
     def analyze(
         self,

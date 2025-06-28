@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Union
 
 from .exceptions import QueryError
+from .models.finder import FindInput, FindOptions
 
 
 class QueryBuilder:
@@ -321,8 +322,10 @@ class QueryBuilder:
         data_query = {k: v for k, v in query.items() if k in self.data_filters}
         pattern_kwargs = {k: v for k, v in query.items() if k not in self.data_filters}
 
-        # Execute the query
-        return self.dataspot.find(data, fields, query=data_query, **pattern_kwargs)
+        # Execute the query using new API
+        find_input = FindInput(data=data, fields=fields, query=data_query)
+        find_options = FindOptions(**pattern_kwargs)
+        return self.dataspot.find(find_input, find_options)
 
     def analyze(self, data: List[Dict[str, Any]], fields: List[str]):
         """Execute the query and return full analysis.

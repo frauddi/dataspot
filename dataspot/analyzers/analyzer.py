@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 from ..models.analyzer import AnalyzeOutput, Insights, Statistics
+from ..models.finder import FindInput, FindOptions
 from .base import Base
 from .finder import Finder
 
@@ -36,8 +37,10 @@ class Analyzer(Base):
         # Validate input
         self._validate_data(data)
 
-        # Get patterns using PatternFinder
-        patterns = Finder().execute(data, fields, query, **kwargs)
+        # Get patterns using Finder
+        find_input = FindInput(data=data, fields=fields, query=query)
+        find_options = FindOptions(**kwargs)
+        patterns = Finder().execute(find_input, find_options)
 
         # Calculate comprehensive statistics
         base_statistics = self._calculate_statistics(data, query)

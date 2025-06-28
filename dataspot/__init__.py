@@ -16,15 +16,29 @@ from dataspot.exceptions import (
     QueryError,
     ValidationError,
 )
+from dataspot.models.finder import FindInput, FindOptions, FindOutput
 from dataspot.models.pattern import Pattern
 from dataspot.models.tree import TreeInput, TreeOptions, TreeOutput
 
 
 # Quick functions for easy usage
-def find(data, fields, **kwargs):
-    """Quick function to find concentration patterns."""
+def find(data, fields, query=None, **kwargs):
+    """Quick function to find concentration patterns.
+
+    Args:
+        data: List of records (dictionaries) to analyze
+        fields: List of field names to analyze hierarchically
+        query: Optional filters to apply to data
+        **kwargs: Additional filtering options (min_percentage, min_count, etc.)
+
+    Returns:
+        FindOutput: Find results dataclass
+
+    """
     dataspot = Dataspot()
-    return dataspot.find(data, fields, **kwargs)
+    find_input = FindInput(data=data, fields=fields, query=query)
+    find_options = FindOptions(**kwargs)
+    return dataspot.find(find_input, find_options)
 
 
 def analyze(data, fields, **kwargs):
@@ -69,6 +83,10 @@ __all__ = [
     # Main classes
     "Dataspot",
     "Pattern",
+    # Find models
+    "FindInput",
+    "FindOptions",
+    "FindOutput",
     # Tree models
     "TreeInput",
     "TreeOptions",
