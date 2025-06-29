@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataspot Algorithm Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 1000px;
+            height: 700px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phase-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(-20px);
+            text-align: center;
+        }
+
+        .phase-subtitle {
+            font-size: 16px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(-10px);
+            text-align: center;
+        }
+
+        /* Phase 1 Styles */
+        .json-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .json-object {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        /* Phase 2 Styles */
+        .conversion-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .conversion-row {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+
+        .json-input {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            flex: 1;
+        }
+
+        .arrow-transform {
+            color: #007bff;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .path-output {
+            background: #e7f3ff;
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            flex: 1;
+            color: #0056b3;
+        }
+
+        /* Phase 3 Styles */
+        .rope-container {
+            margin-top: 50px;
+            position: relative;
+        }
+
+        .rope-row {
+            display: grid;
+            grid-template-columns: 200px 250px 1fr auto;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            opacity: 0;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .rope-row.show {
+            opacity: 1;
+        }
+
+        .json-boxes {
+            display: flex;
+            gap: 5px;
+            justify-content: flex-start;
+        }
+
+        .json-box {
+            width: 40px;
+            height: 25px;
+            background: #e9ecef;
+            border: 1px solid #adb5bd;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .rope-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rope {
+            height: 8px;
+            background: #ccc;
+            border-radius: 4px;
+            transition: all 1s ease;
+            position: relative;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .rope.thick {
+            height: 20px;
+            background: linear-gradient(90deg, #ff6b6b, #ee5a5a);
+            box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .rope.medium {
+            height: 12px;
+            background: linear-gradient(90deg, #ffa726, #ff9800);
+            box-shadow: 0 2px 8px rgba(255, 167, 38, 0.3);
+        }
+
+        .rope.thin {
+            height: 6px;
+            background: #ccc;
+        }
+
+        .rope-label {
+            font-size: 12px;
+            color: #666;
+            padding: 6px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            font-weight: 500;
+            min-width: 180px;
+            text-align: center;
+        }
+
+        .rope-label.dataspot {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #ff6b6b;
+            font-weight: bold;
+        }
+
+        .rope-label.medium {
+            background: #fff3e0;
+            color: #e65100;
+            border: 2px solid #ffa726;
+            font-weight: bold;
+        }
+
+        .rope-label.weak {
+            background: #f5f5f5;
+            color: #666;
+            border: 2px solid #ccc;
+        }
+
+        .json-count {
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .json-count.medium {
+            background: #fd7e14;
+        }
+
+        .json-count.weak {
+            background: #6c757d;
+        }
+
+        .key-insight {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            color: #155724;
+            font-weight: bold;
+            margin-top: 30px;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        /* Phase 4 Styles */
+        .final-result {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .detection-alert {
+            background: #ffebee;
+            border: 2px solid #ff6b6b;
+            border-radius: 8px;
+            padding: 15px 25px;
+            color: #c62828;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: pulse 2s infinite;
+        }
+
+        .result-visualization {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 40px;
+            opacity: 0;
+            transform: translateY(30px);
+            margin-bottom: 40px;
+            padding: 0 20px;
+        }
+
+        .patterns-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .pattern-row {
+            display: grid;
+            grid-template-columns: 180px 150px;
+            align-items: center;
+            gap: 30px;
+            opacity: 0;
+            transform: translateX(-20px);
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .pattern-boxes {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-start;
+        }
+
+        .small-json-box {
+            width: 38px;
+            height: 26px;
+            background: #e9ecef;
+            border: 1px solid #adb5bd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 4px;
+        }
+
+        .connecting-rope {
+            height: 8px;
+            border-radius: 4px;
+            width: 100%;
+            transition: all 0.5s ease;
+        }
+
+        .thick-result {
+            height: 18px;
+            background: linear-gradient(90deg, #ff6b6b, #ee5a5a);
+            box-shadow: 0 3px 12px rgba(255, 107, 107, 0.4);
+        }
+
+        .medium-result {
+            height: 12px;
+            background: linear-gradient(90deg, #ffa726, #ff9800);
+            box-shadow: 0 2px 8px rgba(255, 167, 38, 0.3);
+        }
+
+        .thin-result {
+            height: 7px;
+            background: #ccc;
+        }
+
+        .arrow-to-dataspot {
+            font-size: 36px;
+            color: #ff6b6b;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .dataspot-circle {
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, #ff6b6b, #ee5a5a);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3);
+            padding: 15px;
+            text-align: center;
+        }
+
+        .dataspot-label {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .dataspot-type {
+            font-size: 15px;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .dataspot-concentration {
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+
+        .analysis-summary {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .analysis-stats {
+            font-size: 14px;
+            color: #155724;
+            margin-top: 10px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-nav {
+            background: #6c757d;
+            color: white;
+            width: 50px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .btn-nav:hover {
+            background: #545b62;
+        }
+
+        .btn-nav:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .btn-nav:disabled:hover {
+            background: #e9ecef;
+        }
+
+        /* Animation classes */
+        .fade-in {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+        }
+
+        .scale-in {
+            opacity: 1 !important;
+            transform: scale(1) !important;
+        }
+
+        .slide-in-left {
+            opacity: 1 !important;
+            transform: translateX(0) !important;
+        }
+
+        .slide-in {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+        }
+
+        .show {
+            opacity: 1 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Phase 1: Original JSON Objects -->
+        <div class="phase-1">
+            <div class="phase-title">📊 Phase 1: Original JSON Objects</div>
+            <div class="phase-subtitle">Starting with individual JSON objects...</div>
+            
+            <div class="json-container">
+                <div class="json-object">json_1: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                <div class="json-object">json_2: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                <div class="json-object">json_3: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                <div class="json-object">json_4: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                <div class="json-object">json_5: {"country": "EU", "device": "desktop", "type": "free"}</div>
+                <div class="json-object">json_6: {"country": "EU", "device": "desktop", "type": "free"}</div>
+                <div class="json-object">json_7: {"country": "CA", "device": "tablet", "type": "standard"}</div>
+                <div class="json-object">json_8: {"country": "UK", "device": "mobile", "type": "free"}</div>
+            </div>
+        </div>
+
+        <!-- Phase 2: Converting to String Paths -->
+        <div class="phase-2" style="display: none;">
+            <div class="phase-title">🔄 Phase 2: Converting to String Paths</div>
+            <div class="phase-subtitle">Converting each JSON to hierarchical string path...</div>
+            
+            <div class="conversion-container">
+                <div class="conversion-row">
+                    <div class="json-input">json_1: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=US > device=mobile > type=premium</div>
+                </div>
+                <div class="conversion-row">
+                    <div class="json-input">json_2: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=US > device=mobile > type=premium</div>
+                </div>
+                <div class="conversion-row">
+                    <div class="json-input">json_3: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=US > device=mobile > type=premium</div>
+                </div>
+                <div class="conversion-row">
+                    <div class="json-input">json_4: {"country": "US", "device": "mobile", "type": "premium"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=US > device=mobile > type=premium</div>
+                </div>
+                <div class="conversion-row">
+                    <div class="json-input">json_5: {"country": "EU", "device": "desktop", "type": "free"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=EU > device=desktop > type=free</div>
+                </div>
+                <div class="conversion-row">
+                    <div class="json-input">json_6: {"country": "EU", "device": "desktop", "type": "free"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=EU > device=desktop > type=free</div>
+                </div>
+                <div class="conversion-row">
+                    <div class="json-input">json_7: {"country": "CA", "device": "tablet", "type": "standard"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=CA > device=tablet > type=standard</div>
+                </div>
+                <div class="conversion-row">
+                    <div class="json-input">json_8: {"country": "UK", "device": "mobile", "type": "free"}</div>
+                    <div class="arrow-transform">→</div>
+                    <div class="path-output">country=UK > device=mobile > type=free</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 3: Grouping & Rope Thickening -->
+        <div class="phase-3" style="display: none;">
+            <div class="phase-title">🎯 Phase 3: Grouping & Rope Thickening</div>
+            <div class="phase-subtitle" style="color: #ff6600;">🔥 Watch the dramatic difference: Some ropes grow THICK, others stay thin!</div>
+            <div style="text-align: center; color: #888; font-style: italic; margin-bottom: 30px;">This contrast reveals your data's concentration patterns</div>
+            
+            <div class="rope-container">
+                <div class="rope-row">
+                    <div class="json-boxes">
+                        <div class="json-box">json_1</div>
+                        <div class="json-box">json_2</div>
+                        <div class="json-box">json_3</div>
+                        <div class="json-box">json_4</div>
+                    </div>
+                    <div class="rope-section">
+                        <div class="rope thick"></div>
+                    </div>
+                    <div class="rope-label dataspot">🎯 DATASPOT: US→mobile→premium</div>
+                    <div class="json-count">4</div>
+                </div>
+                
+                <div class="rope-row">
+                    <div class="json-boxes">
+                        <div class="json-box">json_5</div>
+                        <div class="json-box">json_6</div>
+                    </div>
+                    <div class="rope-section">
+                        <div class="rope medium"></div>
+                    </div>
+                    <div class="rope-label medium">📊 Medium: EU→desktop→free</div>
+                    <div class="json-count medium">2</div>
+                </div>
+                
+                <div class="rope-row">
+                    <div class="json-boxes">
+                        <div class="json-box">json_7</div>
+                    </div>
+                    <div class="rope-section">
+                        <div class="rope thin"></div>
+                    </div>
+                    <div class="rope-label weak">📋 Weak: CA→tablet→standard</div>
+                    <div class="json-count weak">1</div>
+                </div>
+                
+                <div class="rope-row">
+                    <div class="json-boxes">
+                        <div class="json-box">json_8</div>
+                    </div>
+                    <div class="rope-section">
+                        <div class="rope thin"></div>
+                    </div>
+                    <div class="rope-label weak">📋 Weak: UK→mobile→free</div>
+                    <div class="json-count weak">1</div>
+                </div>
+            </div>
+
+            <div class="key-insight">
+                💡 Key Insight: Thick ropes = data concentrations = business insights!
+            </div>
+        </div>
+
+        <!-- Phase 4: Dataspot Detection Complete -->
+        <div class="phase-4" style="display: none;">
+            <div class="phase-title">🎯 Phase 4: Dataspot Detection Complete!</div>
+            
+            <div class="final-result">
+                <div class="detection-alert">
+                    🚨 DATASPOT DETECTED! Thickest rope shows highest concentration
+                </div>
+
+                <div class="result-visualization">
+                    <div class="patterns-summary">
+                        <div class="pattern-row primary">
+                            <div class="pattern-boxes">
+                                <div class="small-json-box">json_1</div>
+                                <div class="small-json-box">json_2</div>
+                                <div class="small-json-box">json_3</div>
+                                <div class="small-json-box">json_4</div>
+                            </div>
+                            <div class="connecting-rope thick-result"></div>
+                        </div>
+                        <div class="pattern-row secondary">
+                            <div class="pattern-boxes">
+                                <div class="small-json-box">json_5</div>
+                                <div class="small-json-box">json_6</div>
+                            </div>
+                            <div class="connecting-rope medium-result"></div>
+                        </div>
+                        <div class="pattern-row tertiary">
+                            <div class="pattern-boxes">
+                                <div class="small-json-box">json_7</div>
+                            </div>
+                            <div class="connecting-rope thin-result"></div>
+                        </div>
+                        <div class="pattern-row tertiary">
+                            <div class="pattern-boxes">
+                                <div class="small-json-box">json_8</div>
+                            </div>
+                            <div class="connecting-rope thin-result"></div>
+                        </div>
+                    </div>
+
+                    <div class="arrow-to-dataspot">→</div>
+
+                    <div class="dataspot-circle">
+                        <div class="dataspot-label">🎯 DATASPOT!</div>
+                        <div class="dataspot-type">US→mobile→premium</div>
+                        <div class="dataspot-concentration">50.0% concentration</div>
+                    </div>
+                </div>
+
+                <div class="analysis-summary">
+                    <div style="color: #155724; font-weight: bold; font-size: 16px;">Analysis Complete!</div>
+                    <div class="analysis-stats">
+                        • 8 JSONs processed<br>
+                        • 4 patterns found<br>
+                        • Main dataspot: 4 records (50.0%)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-nav" onclick="previousPhase()" id="prevBtn">
+                <span>◀</span>
+            </button>
+            <button class="btn btn-nav" onclick="nextPhase()" id="nextBtn">
+                <span>▶</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentPhase = 1;
+        let autoMode = true;
+        let autoTimer = null;
+
+        function nextPhase() {
+            if (currentPhase < 4) {
+                autoMode = false;
+                if (autoTimer) clearTimeout(autoTimer);
+                currentPhase++;
+                displayPhase();
+                updateButtons();
+            }
+        }
+
+        function previousPhase() {
+            if (currentPhase > 1) {
+                autoMode = false;
+                if (autoTimer) clearTimeout(autoTimer);
+                currentPhase--;
+                displayPhase();
+                updateButtons();
+            }
+        }
+
+        function autoNext() {
+            if (autoMode && currentPhase < 4) {
+                currentPhase++;
+                displayPhase();
+                updateButtons();
+                autoTimer = setTimeout(autoNext, 8000);
+            }
+        }
+
+        function updateButtons() {
+            document.getElementById('prevBtn').disabled = currentPhase <= 1;
+            document.getElementById('nextBtn').disabled = currentPhase >= 4;
+        }
+
+        function displayPhase() {
+            // Hide all
+            document.querySelectorAll('.phase-1, .phase-2, .phase-3, .phase-4').forEach(p => {
+                p.style.display = 'none';
+            });
+
+            // Reset animations
+            document.querySelectorAll('.fade-in, .scale-in, .slide-in-left, .slide-in, .show').forEach(el => {
+                el.classList.remove('fade-in', 'scale-in', 'slide-in-left', 'slide-in', 'show');
+            });
+
+            document.querySelectorAll('.rope').forEach(r => {
+                r.style.transform = 'scaleY(1)';
+            });
+
+            document.querySelectorAll('.connecting-rope').forEach(r => {
+                r.style.transform = 'scaleY(1)';
+                r.style.filter = 'brightness(1)';
+            });
+
+            document.querySelectorAll('.pattern-row').forEach(r => {
+                r.style.transform = 'translateX(-20px)';
+            });
+
+            // Show current
+            document.querySelector(`.phase-${currentPhase}`).style.display = 'block';
+
+            // Animate
+            setTimeout(() => {
+                if (currentPhase === 1) animatePhase1();
+                if (currentPhase === 2) animatePhase2();
+                if (currentPhase === 3) animatePhase3();
+                if (currentPhase === 4) animatePhase4();
+            }, 100);
+        }
+
+        function animatePhase1() {
+            document.querySelector('.phase-1 .phase-title').classList.add('fade-in');
+            setTimeout(() => {
+                document.querySelector('.phase-1 .phase-subtitle').classList.add('fade-in');
+            }, 300);
+            setTimeout(() => {
+                document.querySelectorAll('.phase-1 .json-object').forEach(obj => {
+                    obj.classList.add('scale-in');
+                });
+            }, 600);
+        }
+
+        function animatePhase2() {
+            document.querySelector('.phase-2 .phase-title').classList.add('fade-in');
+            setTimeout(() => {
+                document.querySelector('.phase-2 .phase-subtitle').classList.add('fade-in');
+            }, 300);
+            setTimeout(() => {
+                document.querySelectorAll('.conversion-row').forEach(row => {
+                    row.classList.add('slide-in-left');
+                });
+            }, 600);
+        }
+
+        function animatePhase3() {
+            document.querySelector('.phase-3 .phase-title').classList.add('fade-in');
+            setTimeout(() => {
+                document.querySelector('.phase-3 .phase-subtitle').classList.add('fade-in');
+            }, 300);
+            setTimeout(() => {
+                document.querySelectorAll('.rope-row').forEach((row, i) => {
+                    setTimeout(() => {
+                        row.classList.add('show');
+                        const rope = row.querySelector('.rope');
+                        if (rope) {
+                            setTimeout(() => {
+                                if (rope.classList.contains('thick')) {
+                                    rope.style.transform = 'scaleY(1.5)';
+                                } else if (rope.classList.contains('medium')) {
+                                    rope.style.transform = 'scaleY(1.2)';
+                                }
+                            }, 200);
+                        }
+                    }, i * 200);
+                });
+            }, 600);
+            setTimeout(() => {
+                const insight = document.querySelector('.key-insight');
+                if (insight) insight.classList.add('slide-in');
+            }, 1200);
+        }
+
+        function animatePhase4() {
+            document.querySelector('.phase-4 .phase-title').classList.add('fade-in');
+            setTimeout(() => {
+                document.querySelector('.detection-alert').classList.add('show');
+            }, 300);
+            setTimeout(() => {
+                document.querySelector('.result-visualization').classList.add('slide-in');
+            }, 600);
+            setTimeout(() => {
+                document.querySelectorAll('.pattern-row').forEach((row, i) => {
+                    setTimeout(() => {
+                        row.classList.add('slide-in-left');
+                        const rope = row.querySelector('.connecting-rope');
+                        if (rope && rope.classList.contains('thick-result')) {
+                            setTimeout(() => {
+                                rope.style.transform = 'scaleY(1.3)';
+                                rope.style.filter = 'brightness(1.1)';
+                            }, 100);
+                        }
+                    }, i * 150);
+                });
+            }, 900);
+            setTimeout(() => {
+                document.querySelector('.analysis-summary').classList.add('slide-in');
+            }, 1500);
+        }
+
+        // Start
+        window.addEventListener('load', () => {
+            updateButtons();
+            displayPhase();
+            autoTimer = setTimeout(autoNext, 8000);
+        });
+    </script>
+</body>
+</html>
