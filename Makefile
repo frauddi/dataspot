@@ -1,5 +1,6 @@
-PYTHON_VERSION = 3.9
+PYTHON_VERSION = 3.11
 VENV_NAME = .venv
+SHELL := /bin/bash
 
 .PHONY: lint lint-fix check tests clean
 
@@ -45,7 +46,7 @@ venv-install:
 
 install: venv-create
 	source $(VENV_NAME)/bin/activate && \
-	uv pip install .
+	uv pip install -e ".[dev]"
 
 # Handle unknown targets - Support arguments
 %:
