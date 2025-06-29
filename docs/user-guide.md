@@ -6,10 +6,10 @@
 
 - [Getting Started](#getting-started)
 - [Core Concepts](#core-concepts)
-- [Basic Usage](#basic-usage)
-- [Advanced Features](#advanced-features)
-- [Performance Optimization](#performance-optimization)
+- [API Methods](#api-methods)
+- [Advanced Usage](#advanced-usage)
 - [Real-World Examples](#real-world-examples)
+- [Performance Tips](#performance-tips)
 - [Troubleshooting](#troubleshooting)
 
 ## Getting Started
@@ -23,288 +23,434 @@ pip install dataspot
 ### Your First Analysis
 
 ```python
-import dataspot
+from dataspot import Dataspot
+from dataspot.models.finder import FindInput, FindOptions
 
-# Sample data
+# Sample transaction data
 data = [
-    {"country": "US", "device": "mobile", "amount": 150},
-    {"country": "US", "device": "mobile", "amount": 200},
-    {"country": "EU", "device": "desktop", "amount": 50},
-    {"country": "US", "device": "mobile", "amount": 300},
+    {"country": "US", "device": "mobile", "amount": "high"},
+    {"country": "US", "device": "mobile", "amount": "medium"},
+    {"country": "EU", "device": "desktop", "amount": "low"},
+    {"country": "US", "device": "mobile", "amount": "high"},
 ]
 
-# Create analyzer
-analyzer = dataspot.Dataspot()
+# Initialize analyzer
+dataspot = Dataspot()
 
 # Find concentration patterns
-patterns = analyzer.find(data, fields=["country", "device"])
+result = dataspot.find(
+    FindInput(data=data, fields=["country", "device"]),
+    FindOptions(min_percentage=10.0, limit=5)
+)
 
-# View results
-for pattern in patterns:
+# Print results
+for pattern in result.patterns:
     print(f"{pattern.path} → {pattern.percentage}% ({pattern.count} records)")
+```
+
+Output:
+```
+country=US > device=mobile → 75.0% (3 records)
+country=US → 75.0% (3 records)
+device=mobile → 75.0% (3 records)
 ```
 
 ## Core Concepts
 
 ### What is a Dataspot?
 
-A **dataspot** is a point of data concentration - where your data clusters or accumulates in unexpected or significant ways. Unlike traditional clustering, dataspots:
+A **dataspot** is a point of data concentration where your data clusters in unexpected or significant ways. Unlike traditional clustering, dataspots:
 
 - Focus on **percentage concentrations** rather than distance metrics
-- Create **hierarchical patterns** showing data flow
-- Identify **business-meaningful insights** automatically
+- Create **hierarchical patterns** showing data relationships
+- Identify **business-meaningful insights** through statistical analysis
 
-### Pattern Hierarchy
+### Pattern Structure
 
-Dataspot creates hierarchical patterns from your data:
+Each pattern contains:
+- **Path**: Hierarchical pattern description (`country=US > device=mobile`)
+- **Percentage**: Proportion of total data this pattern represents
+- **Count**: Number of records matching the pattern
+- **Value**: Actual matched field values
 
-```
-device=mobile → 67.8% (190 records)
-├── device=mobile > country=US → 45.2% (127 records)
-├── device=mobile > country=EU → 15.6% (44 records)
-└── device=mobile > country=CA → 7.0% (19 records)
-```
+### API Structure
 
-### Key Metrics
+Dataspot v0.4.0 uses typed input/output models for all operations:
 
-Each pattern includes:
+- **Input Models**: Define what data to analyze and how to filter it
+- **Options Models**: Configure analysis parameters and thresholds
+- **Output Models**: Structured results with patterns, statistics, and metadata
 
-- **Path**: The hierarchical pattern (e.g., `country=US > device=mobile`)
-- **Percentage**: How much of your data this pattern represents
-- **Count**: Number of records matching this pattern
-- **Depth**: Level in the hierarchy (1 = single field, 2 = two fields, etc.)
+## API Methods
 
-## Basic Usage
+### 1. Find Patterns (`find`)
 
-### Simple Pattern Finding
+Discover concentration patterns in your data.
 
 ```python
-import dataspot
+from dataspot.models.finder import FindInput, FindOptions
 
-# Basic analysis
-analyzer = dataspot.Dataspot()
-patterns = analyzer.find(
-    data=your_data,
-    fields=["field1", "field2", "field3"]
+# Basic pattern finding
+result = dataspot.find(
+    FindInput(
+        data=transactions,
+        fields=["country", "payment_method", "device"]
+    ),
+    FindOptions(
+        min_percentage=5.0,    # Only patterns with >5% concentration
+        limit=10,              # Top 10 patterns
+        sort_by="percentage"   # Sort by concentration strength
+    )
 )
 
-# Print top 5 patterns
-for pattern in patterns[:5]:
-    print(f"{pattern.path} → {pattern.percentage:.1f}%")
+print(f"Found {len(result.patterns)} patterns")
+for pattern in result.patterns:
+    print(f"{pattern.path} → {pattern.percentage:.1f}% ({pattern.count} records)")
 ```
 
-### Filtering Results
+**FindOptions parameters:**
+- `min_percentage`: Minimum concentration threshold (default: 0.0)
+- `max_percentage`: Maximum concentration threshold (default: 100.0)
+- `min_count`: Minimum number of records (default: 1)
+- `limit`: Maximum number of patterns to return (default: 100)
+- `sort_by`: Sort criteria ("percentage", "count", "path")
+- `contains`: Filter patterns containing specific text
+- `max_depth`: Limit hierarchy depth
+
+### 2. Statistical Analysis (`analyze`)
+
+Get comprehensive statistical insights with additional metrics.
 
 ```python
-# Only significant patterns
-significant_patterns = analyzer.find(
-    data,
-    fields=["country", "device", "user_type"],
-    min_percentage=10,  # Only patterns with >10% concentration
-    min_count=50,      # At least 50 records
-    max_depth=2        # Limit to 2-field combinations
+from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions
+
+result = dataspot.analyze(
+    AnalyzeInput(
+        data=customer_data,
+        fields=["region", "tier", "product"]
+    ),
+    AnalyzeOptions(
+        min_percentage=8.0,
+        include_statistics=True,
+        confidence_level=0.95
+    )
+)
+
+print(f"Analysis summary: {result.summary}")
+print(f"Statistical insights: {len(result.insights)} found")
+
+# Enhanced pattern information
+for pattern in result.patterns:
+    print(f"{pattern.path} → {pattern.percentage:.1f}% "
+          f"(confidence: {pattern.confidence:.2f})")
+```
+
+### 3. Hierarchical Trees (`tree`)
+
+Build hierarchical visualizations of data relationships.
+
+```python
+from dataspot.models.tree import TreeInput, TreeOptions
+
+tree = dataspot.tree(
+    TreeInput(
+        data=sales_data,
+        fields=["region", "product", "channel"]
+    ),
+    TreeOptions(
+        min_value=10,     # Minimum records per node
+        max_depth=3,      # Maximum tree depth
+        sort_by="value"   # Sort children by record count
+    )
+)
+
+print(f"Root contains {tree.value} records")
+print(f"Has {len(tree.children)} main branches")
+
+# Navigate the tree
+for child in tree.children:
+    print(f"Branch: {child.name} → {child.value} records")
+    for grandchild in child.children:
+        print(f"  Sub-branch: {grandchild.name} → {grandchild.value} records")
+```
+
+### 4. Auto Discovery (`discover`)
+
+Automatically find the most interesting patterns without specifying fields.
+
+```python
+from dataspot.models.discovery import DiscoverInput, DiscoverOptions
+
+result = dataspot.discover(
+    DiscoverInput(data=transaction_data),
+    DiscoverOptions(
+        max_fields=3,         # Consider up to 3-field combinations
+        min_percentage=15.0,  # Focus on significant patterns
+        limit=10             # Top 10 discoveries
+    )
+)
+
+print(f"📊 Analyzed {result.statistics.total_records} records")
+print(f"🔬 Ranked {len(result.field_ranking)} fields")
+print(f"🎯 Discovered {len(result.top_patterns)} key patterns")
+
+# Field importance ranking
+print("\nField importance:")
+for field_rank in result.field_ranking[:5]:
+    print(f"  {field_rank.field}: {field_rank.score:.2f}")
+
+# Top patterns
+print("\nTop discovered patterns:")
+for pattern in result.top_patterns[:3]:
+    print(f"  {pattern.path} → {pattern.percentage:.1f}%")
+```
+
+### 5. Temporal Comparison (`compare`)
+
+Compare patterns between different time periods or datasets.
+
+```python
+from dataspot.models.compare import CompareInput, CompareOptions
+
+result = dataspot.compare(
+    CompareInput(
+        current_data=this_month_data,
+        baseline_data=last_month_data,
+        fields=["country", "payment_method"]
+    ),
+    CompareOptions(
+        change_threshold=0.15,           # 15% change threshold
+        statistical_significance=True,   # Test significance
+        min_percentage=5.0              # Focus on meaningful patterns
+    )
+)
+
+print(f"Changes detected: {len(result.changes)}")
+print(f"New patterns: {len(result.new_patterns)}")
+print(f"Disappeared patterns: {len(result.disappeared_patterns)}")
+
+# Significant changes
+for change in result.changes:
+    if change.is_significant:
+        direction = "↗" if change.change > 0 else "↘"
+        print(f"{direction} {change.pattern.path}: "
+              f"{change.change:+.1f}% change")
+```
+
+## Advanced Usage
+
+### Data Preprocessing
+
+Transform data before analysis using custom preprocessors:
+
+```python
+# Add preprocessors for data transformation
+dataspot.add_preprocessor("email", lambda x: x.split("@")[1] if "@" in x else "unknown")
+dataspot.add_preprocessor("amount", lambda x: "high" if x > 1000 else "low" if x < 100 else "medium")
+
+# Now analysis will use transformed values
+result = dataspot.find(
+    FindInput(data=user_data, fields=["email", "amount"]),
+    FindOptions(min_percentage=10.0)
 )
 ```
 
-### Sorting Options
+### Query Filtering
+
+Pre-filter data before analysis:
 
 ```python
-# Sort by different criteria
-patterns = analyzer.find(data, fields, sort_by="percentage")  # Default
-patterns = analyzer.find(data, fields, sort_by="count")       # By record count
-patterns = analyzer.find(data, fields, sort_by="depth")       # By hierarchy depth
-```
+# Analyze only US customers
+result = dataspot.find(
+    FindInput(
+        data=customer_data,
+        fields=["state", "product", "tier"],
+        query={"country": "US"}  # Pre-filter
+    ),
+    FindOptions(min_percentage=5.0)
+)
 
-## Advanced Features
-
-### Query Builder Pattern
-
-For complex analyses, use the fluent QueryBuilder interface:
-
-```python
-from dataspot import QueryBuilder
-
-# Complex filtering with method chaining
-results = QueryBuilder(analyzer) \
-    .fields(["country", "device", "payment_method"]) \
-    .min_percentage(15) \
-    .exclude_values(["test", "internal"]) \
-    .contains("mobile") \
-    .sort_by("percentage") \
-    .limit(20) \
-    .execute()
-```
-
-### Custom Preprocessing
-
-Transform your data before analysis:
-
-```python
-# Add custom field transformations
-def extract_hour_from_timestamp(timestamp):
-    return timestamp.split("T")[1][:2]
-
-def categorize_amount(amount):
-    if amount < 100:
-        return "low"
-    elif amount < 500:
-        return "medium"
-    else:
-        return "high"
-
-# Register preprocessors
-analyzer.add_preprocessor("timestamp", extract_hour_from_timestamp)
-analyzer.add_preprocessor("amount", categorize_amount)
-
-# Now analyze with transformed fields
-patterns = analyzer.find(data, ["country", "timestamp", "amount"])
-```
-
-### Text Pattern Analysis
-
-```python
-# Analyze text patterns
-def extract_domain(email):
-    return email.split("@")[1] if "@" in email else "unknown"
-
-analyzer.add_preprocessor("email", extract_domain)
-
-# Find email domain concentrations
-email_patterns = analyzer.find(
-    user_data,
-    ["email", "country", "account_type"]
+# Multiple filter criteria
+result = dataspot.find(
+    FindInput(
+        data=transaction_data,
+        fields=["payment_method", "amount_range"],
+        query={
+            "country": ["US", "CA"],     # North America only
+            "status": "completed"        # Completed transactions only
+        }
+    ),
+    FindOptions(min_percentage=8.0)
 )
 ```
 
-### Advanced Filtering
+### Advanced Options
 
 ```python
-# Multiple filtering criteria
-filtered_patterns = analyzer.query(
-    data=transaction_data,
-    fields=["country", "payment_method", "amount_category"],
-    min_percentage=5,
-    max_percentage=80,  # Exclude overwhelming concentrations
-    contains=["credit", "mobile"],  # Must contain these terms
-    excludes=["test", "internal"],  # Exclude these patterns
-    regex_filter=r"US|EU",  # Regex pattern matching
-    depth_range=(2, 3)  # Only 2-3 field combinations
+# Comprehensive analysis with all options
+result = dataspot.analyze(
+    AnalyzeInput(
+        data=large_dataset,
+        fields=["region", "product", "channel", "tier"],
+        query={"active": True}
+    ),
+    AnalyzeOptions(
+        min_percentage=5.0,
+        max_percentage=85.0,     # Exclude overwhelming patterns
+        min_count=50,            # At least 50 records
+        limit=25,                # Top 25 patterns
+        sort_by="percentage",
+        include_statistics=True,
+        confidence_level=0.95
+    )
 )
 ```
-
-## Performance Optimization
-
-### Large Dataset Strategies
-
-**Chunked Processing:**
-
-```python
-def analyze_large_dataset(data, chunk_size=50000):
-    """Process large datasets in chunks"""
-    all_patterns = []
-
-    for i in range(0, len(data), chunk_size):
-        chunk = data[i:i + chunk_size]
-        patterns = analyzer.find(chunk, fields, min_percentage=5)
-        all_patterns.extend(patterns)
-
-    return all_patterns
-```
-
-**Memory-Efficient Analysis:**
-
-```python
-# Reduce memory usage
-patterns = analyzer.find(
-    data,
-    fields,
-    min_percentage=10,    # Skip low-concentration patterns
-    max_depth=3,         # Limit hierarchy depth
-    limit=100,           # Cap number of results
-    sample_size=10000    # Analyze sample of large dataset
-)
-```
-
-### Performance Tips
-
-1. **Filter Early**: Use `min_percentage` to skip insignificant patterns
-2. **Limit Depth**: Set `max_depth` to control computational complexity
-3. **Sample Large Data**: Use `sample_size` for exploratory analysis
-4. **Specific Fields**: Only analyze relevant fields
-5. **Batch Processing**: Process large datasets in chunks
 
 ## Real-World Examples
 
 ### Fraud Detection
 
 ```python
-# Detect suspicious transaction patterns
-suspicious_patterns = analyzer.find(
-    transactions,
-    fields=["country", "payment_method", "time_of_day", "amount_range"],
-    min_percentage=20  # Look for high concentrations
+from dataspot.models.discovery import DiscoverInput, DiscoverOptions
+
+# Auto-discover suspicious patterns
+fraud_discovery = dataspot.discover(
+    DiscoverInput(data=transactions),
+    DiscoverOptions(
+        min_percentage=25.0,  # High concentrations are suspicious
+        max_fields=4
+    )
 )
 
-# Flag unusual concentrations
-for pattern in suspicious_patterns:
-    if pattern.percentage > 30 and pattern.count > 100:
-        print(f"⚠️ Suspicious pattern: {pattern.path}")
-        print(f"   {pattern.percentage}% of transactions")
+# Flag high-risk patterns
+for pattern in fraud_discovery.top_patterns:
+    if pattern.percentage > 40:
+        print(f"🚨 HIGH RISK: {pattern.path} ({pattern.percentage:.1f}%)")
+    elif pattern.percentage > 25:
+        print(f"⚠️ MEDIUM RISK: {pattern.path} ({pattern.percentage:.1f}%)")
 ```
 
-### Business Intelligence
+### Customer Segmentation
 
 ```python
-# Customer behavior analysis
-customer_insights = analyzer.find(
-    customer_data,
-    fields=["region", "device", "product_category", "subscription_tier"],
-    min_percentage=5
+from dataspot.models.tree import TreeInput, TreeOptions
+
+# Build customer hierarchy
+customer_tree = dataspot.tree(
+    TreeInput(
+        data=customers,
+        fields=["region", "segment", "product", "tier"]
+    ),
+    TreeOptions(min_value=25, max_depth=3)
 )
 
-# Find growth opportunities
-growth_patterns = [p for p in customer_insights
-                  if 10 <= p.percentage <= 30]  # Sweet spot for growth
+# Identify growth opportunities
+def find_growth_opportunities(node, level=0):
+    indent = "  " * level
+    if 100 <= node.value <= 500:  # Sweet spot for growth
+        print(f"{indent}💰 Growth opportunity: {node.name} ({node.value} customers)")
 
-print("Growth Opportunities:")
-for pattern in growth_patterns[:10]:
-    print(f"📈 {pattern.path} → {pattern.percentage}% market share")
-```
+    for child in node.children:
+        find_growth_opportunities(child, level + 1)
 
-### Data Quality Analysis
-
-```python
-# Find data quality issues
-quality_patterns = analyzer.find(
-    raw_data,
-    fields=["source", "data_type", "validation_status"],
-    min_percentage=1
-)
-
-# Identify anomalies
-anomalies = [p for p in quality_patterns
-            if p.percentage > 80 or "error" in p.path.lower()]
-
-for anomaly in anomalies:
-    print(f"🚨 Data quality issue: {anomaly.path}")
+find_growth_opportunities(customer_tree)
 ```
 
 ### A/B Testing Analysis
 
 ```python
-# Analyze A/B test results
-test_patterns = analyzer.find(
-    experiment_data,
-    fields=["variant", "user_segment", "outcome", "device"],
-    min_percentage=3
+from dataspot.models.compare import CompareInput, CompareOptions
+
+# Compare test variants
+ab_comparison = dataspot.compare(
+    CompareInput(
+        current_data=variant_a_data,
+        baseline_data=variant_b_data,
+        fields=["device", "outcome", "user_segment"]
+    ),
+    CompareOptions(
+        change_threshold=0.05,    # 5% significance threshold
+        statistical_significance=True
+    )
 )
 
-# Compare variant performance
-for pattern in test_patterns:
-    if "variant=A" in pattern.path:
-        print(f"Variant A: {pattern.path} → {pattern.percentage}%")
-    elif "variant=B" in pattern.path:
-        print(f"Variant B: {pattern.path} → {pattern.percentage}%")
+# Analyze results
+for change in ab_comparison.changes:
+    if change.is_significant:
+        variant = "A" if change.change > 0 else "B"
+        print(f"✅ Variant {variant} wins: {change.pattern.path} "
+              f"({change.change:+.1f}% difference)")
+```
+
+### Data Quality Monitoring
+
+```python
+from dataspot.models.analyzer import AnalyzeInput, AnalyzeOptions
+
+# Monitor data quality patterns
+quality_analysis = dataspot.analyze(
+    AnalyzeInput(
+        data=raw_data,
+        fields=["source", "validation_status", "error_type"]
+    ),
+    AnalyzeOptions(
+        min_percentage=1.0,  # Catch even small issues
+        include_statistics=True
+    )
+)
+
+# Alert on quality issues
+for pattern in quality_analysis.patterns:
+    if "error" in str(pattern.path).lower() and pattern.percentage > 5:
+        print(f"🔍 Data quality alert: {pattern.path} ({pattern.percentage:.1f}%)")
+```
+
+## Performance Tips
+
+### Large Dataset Optimization
+
+```python
+# For datasets > 100K records
+result = dataspot.find(
+    FindInput(data=large_dataset, fields=selected_fields),
+    FindOptions(
+        min_percentage=10.0,  # Skip low-concentration patterns
+        limit=50,             # Limit results
+        max_depth=3          # Control complexity
+    )
+)
+```
+
+### Memory-Efficient Processing
+
+```python
+# Process in chunks for very large datasets
+def analyze_chunks(data, chunk_size=50000):
+    all_patterns = []
+
+    for i in range(0, len(data), chunk_size):
+        chunk = data[i:i + chunk_size]
+        result = dataspot.find(
+            FindInput(data=chunk, fields=["key", "fields"]),
+            FindOptions(min_percentage=15.0)
+        )
+        all_patterns.extend(result.patterns)
+
+    return all_patterns
+```
+
+### Quick Exploration
+
+```python
+# Fast discovery for initial exploration
+quick_discovery = dataspot.discover(
+    DiscoverInput(data=sample_data[:10000]),  # Sample first
+    DiscoverOptions(
+        max_fields=2,         # Simple patterns only
+        min_percentage=20.0,  # High threshold
+        limit=10             # Few results
+    )
+)
 ```
 
 ## Troubleshooting
@@ -312,95 +458,69 @@ for pattern in test_patterns:
 ### Common Issues
 
 **No Patterns Found:**
-
 ```python
-# Check your data structure
+# Check data structure
 print(f"Data sample: {data[:2]}")
 print(f"Available fields: {list(data[0].keys()) if data else 'No data'}")
 
-# Lower the minimum percentage
-patterns = analyzer.find(data, fields, min_percentage=1)
-```
-
-**Too Many Patterns:**
-
-```python
-# Increase filtering
-patterns = analyzer.find(
-    data,
-    fields,
-    min_percentage=10,  # Higher threshold
-    max_depth=2,       # Limit complexity
-    limit=50          # Cap results
+# Lower thresholds
+result = dataspot.find(
+    FindInput(data=data, fields=fields),
+    FindOptions(min_percentage=1.0)  # Very low threshold
 )
 ```
 
-**Memory Issues:**
-
+**Too Many Results:**
 ```python
-# Process in smaller chunks
-chunk_size = 10000
-for i in range(0, len(data), chunk_size):
-    chunk = data[i:i + chunk_size]
-    patterns = analyzer.find(chunk, fields)
-    # Process patterns immediately
+# Increase filtering
+result = dataspot.find(
+    FindInput(data=data, fields=fields),
+    FindOptions(
+        min_percentage=15.0,  # Higher threshold
+        limit=20,            # Fewer results
+        max_depth=2         # Simpler patterns
+    )
+)
 ```
 
 **Performance Issues:**
-
 ```python
-# Profile your analysis
 import time
 
+# Time your analysis
 start = time.time()
-patterns = analyzer.find(data, fields)
+result = dataspot.find(FindInput(data=data, fields=fields), FindOptions())
 duration = time.time() - start
 
 print(f"Analysis took {duration:.2f}s for {len(data)} records")
 
-# Optimize if needed
-if duration > 10:  # If taking too long
-    patterns = analyzer.find(
-        data,
-        fields,
-        sample_size=min(50000, len(data))
-    )
+# If too slow, optimize
+if duration > 10:
+    # Use sampling
+    sample = data[:min(50000, len(data))]
+    result = dataspot.find(FindInput(data=sample, fields=fields), FindOptions())
 ```
 
-### Data Format Requirements
+### Data Requirements
 
-**Supported Data Formats:**
+**Supported Formats:**
+- List of dictionaries (recommended)
+- Pandas DataFrame (convert with `df.to_dict('records')`)
+- JSON records
 
-```python
-# List of dictionaries (recommended)
-data = [
-    {"field1": "value1", "field2": "value2"},
-    {"field1": "value3", "field2": "value4"}
-]
-
-# Pandas DataFrame
-import pandas as pd
-df = pd.DataFrame(data)
-patterns = analyzer.find(df.to_dict('records'), fields)
-
-# CSV files
-df = pd.read_csv('data.csv')
-patterns = analyzer.find(df.to_dict('records'), fields)
-```
-
-**Field Requirements:**
-
-- Fields must exist in all records
-- Values should be strings or convertible to strings
-- Empty/null values are handled as "unknown"
-- Use preprocessors for complex data transformations
+**Best Practices:**
+- Ensure consistent field names across records
+- Handle missing values before analysis (or use preprocessors)
+- Use meaningful field names for better pattern interpretation
+- Preprocess complex data types (dates, emails, etc.)
 
 ### Getting Help
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/frauddi/dataspot/issues)
-- **Discussions**: [Ask questions and share insights](https://github.com/frauddi/dataspot/discussions)
-- **Examples**: Check the `/examples` directory for more use cases
+- **Documentation**: Full API reference in code docstrings
+- **Examples**: Check `/examples` directory for more use cases
+- **Issues**: [GitHub Issues](https://github.com/frauddi/dataspot/issues) for bugs and features
+- **Discussions**: [GitHub Discussions](https://github.com/frauddi/dataspot/discussions) for questions
 
 ---
 
-**Ready to find your dataspots? Start with the basic examples and work your way up to advanced patterns!**
+**Ready to discover your dataspots? Start with `find()` for basic patterns, then explore `discover()` for automatic insights!**
