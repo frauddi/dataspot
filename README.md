@@ -243,7 +243,7 @@ tree = dataspot.tree(
 
 ## 🎬 Dataspot in Action
 
-[See the HTML file explanation in action](https://github.com/frauddi/dataspot/blob/main/algorithm-dataspot.html)
+[View the algorithm](https://frauddi.github.io/dataspot/algorithm-dataspot.html)
 ![Dataspot in action - Finding data concentration patterns](algorithm-dataspot.gif)
 
 See Dataspot discover concentration patterns and dataspots in real-time with hierarchical analysis and statistical insights.
