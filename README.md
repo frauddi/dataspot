@@ -2,7 +2,7 @@
 
 > **Find data concentration patterns and dataspots in your datasets**
 
-[![PyPI version](https://badge.fury.io/py/dataspot.svg)](https://pypi.org/project/dataspot/)
+[![PyPI version](https://img.shields.io/pypi/v/dataspot.svg)](https://pypi.org/project/dataspot/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Maintained by Frauddi](https://img.shields.io/badge/Maintained%20by-Frauddi-blue.svg)](https://frauddi.com)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -115,6 +115,30 @@ print(f"📊 Changes detected: {len(comparison.changes)}")
 print(f"🆕 New patterns: {len(comparison.new_patterns)}")
 ```
 
+### 🌳 Hierarchical Visualization
+
+```python
+from dataspot.models.tree import TreeInput, TreeOptions
+
+# Build hierarchical tree for data exploration
+tree = dataspot.tree(
+    TreeInput(
+        data=sales_data,
+        fields=["region", "product_category", "sales_channel"]
+    ),
+    TreeOptions(min_value=10, max_depth=3, sort_by="value")
+)
+
+print(f"🌳 Total records: {tree.value}")
+print(f"📊 Main branches: {len(tree.children)}")
+
+# Navigate the hierarchy
+for region in tree.children:
+    print(f"  📍 {region.name}: {region.value} records")
+    for product in region.children:
+        print(f"    📦 {product.name}: {product.value} records")
+```
+
 ### 🤖 Auto Discovery
 
 ```python
@@ -168,14 +192,22 @@ Dataspot delivers consistent, predictable performance with exceptionally efficie
 
 ### 🚀 Real-World Performance
 
-| Dataset Size | Processing Time | Memory Usage |
-|--------------|----------------|--------------|
-| 1K records   | ~4ms          | ~1MB         |
-| 10K records  | ~40ms         | ~2MB         |
-| 100K records | ~400ms        | ~3MB         |
-| 1M records   | ~4s           | ~10MB        |
+| Dataset Size | Processing Time | Memory Usage | Patterns Found |
+|--------------|-----------------|---------------|----------------|
+| 1,000 records | **~5ms** | **~1.4MB** | 12 patterns |
+| 10,000 records | **~43ms** | **~2.8MB** | 12 patterns |
+| 100,000 records | **~375ms** | **~2.9MB** | 20 patterns |
+| 1,000,000 records | **~3.7s** | **~3.0MB** | 20 patterns |
 
-> **Benchmark Details**: Performance measured on standard hardware with realistic datasets (multiple fields, mixed data types). Memory usage is exceptionally efficient due to optimized algorithms. Times are averages of multiple runs for accuracy.
+> **Benchmark Methodology**: Performance measured using validated testing with 5 iterations per dataset size on MacBook Pro (M-series). Test data specifications:
+>
+> - **JSON Size**: ~164 bytes per JSON record (~0.16 KB each)
+> - **JSON Structure**: 8 keys per JSON record (`country`, `device`, `payment_method`, `amount`, `user_type`, `channel`, `status`, `id`)
+> - **Analysis Scope**: 4 fields analyzed simultaneously (`country`, `device`, `payment_method`, `user_type`)
+> - **Configuration**: `min_percentage=5.0`, `limit=50` patterns
+> - **Results**: Consistently finds 12 concentration patterns across all dataset sizes
+> - **Variance**: Minimal timing variance (±1-6ms), demonstrating algorithmic stability
+> - **Memory Efficiency**: Near-constant memory usage regardless of dataset size
 
 ### 💡 Performance Tips
 
@@ -233,13 +265,13 @@ See Dataspot discover concentration patterns and dataspots in real-time with hie
 - `DiscoverOptions` - Auto-discovery constraints
 - `TreeOptions` - Tree structure customization
 
-### Response Models
+### Output Models
 
-All methods return structured responses with:
-
-- `patterns` - Found concentration patterns
-- `statistics` - Analysis metrics
-- `metadata` - Processing information
+- `FindOutput` - Pattern discovery results with statistics
+- `AnalyzeOutput` - Enhanced analysis with insights and confidence scores
+- `CompareOutput` - Change detection results with significance tests
+- `DiscoverOutput` - Auto-discovery findings with field rankings
+- `TreeOutput` - Hierarchical tree structure with navigation
 
 ## 🔧 Installation & Requirements
 
