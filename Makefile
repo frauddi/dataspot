@@ -49,19 +49,15 @@ install: venv-create
 	uv pip install -e ".[dev]"
 
 pypi-install:
-	source $(VENV_NAME)/bin/activate && \
-	uv pip install build twine
+	python3 -m pip install --upgrade pip build twine
 
 pypi-build:
-	source $(VENV_NAME)/bin/activate && \
 	python3 -m build
 
 pypi-check:
-	source $(VENV_NAME)/bin/activate && \
 	twine check dist/*
 
 pypi-upload: pypi-build
-	source $(VENV_NAME)/bin/activate && \
 	twine upload dist/*
 
 # Handle unknown targets - Support arguments
