@@ -1,7 +1,7 @@
 """Dataspot - Find data concentration patterns and dataspots."""
 
-# This is replaced by the release workflow with the actual version
-__version__ = "RELEASE_VERSION"
+# This is replaced by the release workflow in the .github/workflows/publish.yml file with the actual version
+__version__ = "0.0.0"
 __author__ = "Elio Rincón"
 __email__ = "elio@frauddi.com"
 __maintainer__ = "Frauddi Team"
