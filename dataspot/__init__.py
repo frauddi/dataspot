@@ -1,6 +1,7 @@
 """Dataspot - Find data concentration patterns and dataspots."""
 
-__version__ = "0.4.0"
+# This is replaced by the release workflow with the actual version
+__version__ = "RELEASE_VERSION"
 __author__ = "Elio Rincón"
 __email__ = "elio@frauddi.com"
 __maintainer__ = "Frauddi Team"
