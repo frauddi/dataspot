@@ -1,0 +1,95 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: make venv-install
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Run linting
+        run: make lint
+
+      - name: Run tests
+        run: make tests
+
+  build:
+    needs: quality-check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Extract version from release tag
+        run: |
+          # Extract version from tag (v1.2.3 -> 1.2.3)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "📦 Building version: $VERSION"
+
+      - name: Update version in __init__.py
+        run: |
+          # Update version in __init__.py
+          sed -i 's/__version__ = ".*"/__version__ = "'$VERSION'"/' dataspot/__init__.py
+          echo "✅ Updated __init__.py with version $VERSION"
+          grep "__version__" dataspot/__init__.py
+
+      - name: Install build dependencies
+        run: make pypi-install
+
+      - name: Build package
+        run: make pypi-build
+
+      - name: Check package
+        run: make pypi-check
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
