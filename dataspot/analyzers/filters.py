@@ -3,6 +3,7 @@
 import re
 from typing import Any, Dict, List
 
+from ..exceptions import DataspotError
 from ..models.pattern import Pattern
 
 
@@ -78,9 +79,13 @@ class PatternFilter:
 
         """
         if operator == ">=":
-            return [p for p in patterns if getattr(p, attr) >= value]
+            return [
+                p for p in patterns if hasattr(p, attr) and getattr(p, attr) >= value
+            ]
         else:  # operator == "<="
-            return [p for p in patterns if getattr(p, attr) <= value]
+            return [
+                p for p in patterns if hasattr(p, attr) and getattr(p, attr) <= value
+            ]
 
     def _apply_text_filters(self, patterns: List[Pattern], **kwargs) -> List[Pattern]:
         """Apply text-based filters (contains, exclude, regex).
@@ -108,8 +113,11 @@ class PatternFilter:
 
         # Regex filter
         if "regex" in kwargs:
-            regex_pattern = re.compile(kwargs["regex"])
-            filtered = [p for p in filtered if regex_pattern.search(p.path)]
+            try:
+                regex_pattern = re.compile(kwargs["regex"])
+                filtered = [p for p in filtered if regex_pattern.search(p.path)]
+            except re.error as e:
+                raise DataspotError(f"Invalid regex pattern: {e}") from e
 
         return filtered
 
