@@ -16,27 +16,54 @@ class CompareInput:
 
 @dataclass
 class CompareOptions:
-    """Options model for the compare() method."""
+    """Options for temporal comparison analysis.
 
-    statistical_significance: bool = (
-        False  # Calculate p-values and confidence intervals
-    )
-    change_threshold: float = 0.15  # Threshold for significant changes (0.15 = 15%)
-    # Additional filtering options (same as find method)
-    min_percentage: float = 1.0  # Minimum concentration percentage threshold
-    max_percentage: Optional[float] = None  # Maximum concentration percentage threshold
-    min_count: Optional[int] = None  # Minimum record count per pattern
-    max_count: Optional[int] = None  # Maximum record count per pattern
-    min_depth: Optional[int] = None  # Minimum depth for patterns to be included
-    max_depth: Optional[int] = None  # Maximum depth for patterns to be included
-    contains: Optional[str] = None  # Pattern path must contain this text
-    exclude: Optional[List[str]] = None  # Pattern path must NOT contain these texts
-    regex: Optional[str] = None  # Pattern path must match this regex pattern
-    limit: Optional[int] = None  # Maximum number of patterns to return
-    sort_by: Optional[str] = None  # Sort field: 'percentage', 'count', 'depth'
-    reverse: Optional[bool] = (
-        None  # Sort in descending order (True) or ascending (False)
-    )
+    Args:
+        statistical_significance: Enable statistical significance testing.
+            Calculates p-values and confidence intervals. Recommended for scientific analysis.
+        change_threshold: Minimum relative change to consider significant (0.0-1.0).
+            Common: 0.05 (5%), 0.15 (15%), 0.25 (25%). Higher = less sensitive.
+        min_percentage: Minimum concentration threshold (0.0-100.0).
+            Filters weak patterns before comparison. Common: 1.0 (1%), 5.0 (5%).
+        max_percentage: Maximum concentration threshold (0.0-100.0).
+            Excludes overly concentrated patterns. Rare usage.
+        min_count: Minimum record count per pattern.
+            Ensures statistical validity. Common: 2, 5, 10.
+        max_count: Maximum record count per pattern.
+            Excludes dominant patterns. Rare usage.
+        min_depth: Minimum pattern depth (1+).
+            Focuses on multi-field patterns. Example: 2 for combinations only.
+        max_depth: Maximum pattern depth (1+).
+            Controls comparison depth. Common: 3-4.
+        contains: Pattern must contain this text.
+            Focuses comparison on specific patterns. Example: "fraud" for fraud analysis.
+        exclude: Pattern must NOT contain these texts.
+            Removes patterns from comparison. Example: ["test", "demo"].
+        regex: Pattern must match this regex.
+            Advanced pattern filtering. Example: "^(high|critical)" for risk patterns.
+        limit: Maximum patterns to return.
+            Controls output size. Common: 20, 50, 100.
+        sort_by: Sort field ('percentage', 'count', 'depth').
+            Orders comparison results. Default: percentage.
+        reverse: Sort descending.
+            True=highest first, False=lowest first, None=auto.
+
+    """
+
+    statistical_significance: bool = False
+    change_threshold: float = 0.15
+    min_percentage: float = 1.0
+    max_percentage: Optional[float] = None
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
+    min_depth: Optional[int] = None
+    max_depth: Optional[int] = None
+    contains: Optional[str] = None
+    exclude: Optional[List[str]] = None
+    regex: Optional[str] = None
+    limit: Optional[int] = None
+    sort_by: Optional[str] = None
+    reverse: Optional[bool] = None
 
 
 @dataclass

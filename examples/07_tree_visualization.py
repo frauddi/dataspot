@@ -62,7 +62,7 @@ def main():
     # Tree with filtering
     tree_filtered = dataspot.tree(
         TreeInput(data=data, fields=["country", "device", "user_type"]),
-        TreeOptions(min_value=2, top=3),
+        TreeOptions(min_count=2, top=3),
     )
     print(f"Filtered tree children: {len(tree_filtered.children)}")
 
