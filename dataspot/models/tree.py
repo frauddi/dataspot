@@ -22,7 +22,7 @@ class TreeOptions:
     """Options for hierarchical tree visualization.
 
     Args:
-        top: Top elements per tree level (1-20).
+        limit: Maximum elements per tree level (1-100).
             Limits branches per node. Common: 5 (balanced), 3 (simple), 10 (detailed).
         min_count: Minimum record count per node.
             Excludes small nodes. Common: 1 (show all), 5 (significant only), 10 (major only).
@@ -45,7 +45,7 @@ class TreeOptions:
 
     """
 
-    top: int = 5
+    limit: int = 5
     min_count: Optional[int] = None
     min_percentage: Optional[float] = None
     max_count: Optional[int] = None
@@ -120,7 +120,7 @@ class TreeOutput:
     value: int  # Total number of records
     percentage: float  # Percentage of total records (typically 100.0)
     node: int  # Root node identifier (typically 0)
-    top: int  # Number of top elements considered per level
+    limit: int  # Number of top elements considered per level
     statistics: TreeStatistics  # Analysis statistics
     fields_analyzed: List[str]  # Fields that were analyzed
 

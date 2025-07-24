@@ -37,7 +37,7 @@ class TestTreeCore:
         assert result.value == 0
         assert result.percentage == 0.0
         assert result.node == 0
-        assert result.top == 5  # Default top value
+        assert result.limit == 5  # Default limit value
 
     def test_execute_with_empty_fields(self):
         """Test execute method with empty fields list."""
@@ -76,26 +76,26 @@ class TestTreeCore:
         assert result.value == 3
         assert result.percentage == 100.0
         assert result.node == 0
-        assert result.top == 5
+        assert result.limit == 5
 
         # Check children exist
         assert result.children is not None
         assert len(result.children) > 0
         assert all(hasattr(child, "name") for child in result.children)
 
-    def test_execute_with_custom_top(self):
-        """Test execute method with custom top parameter."""
+    def test_execute_with_custom_limit(self):
+        """Test execute method with custom limit parameter."""
         data = [
             {"country": "US", "device": "mobile"},
             {"country": "EU", "device": "desktop"},
         ]
 
         tree_input = TreeInput(data=data, fields=["country", "device"])
-        tree_options = TreeOptions(top=3)
+        tree_options = TreeOptions(limit=3)
+
         result = self.tree.execute(tree_input, tree_options)
 
-        assert isinstance(result, TreeOutput)
-        assert result.top == 3
+        assert result.limit == 3
 
     def test_execute_with_query_filter(self):
         """Test execute method with query filtering."""
@@ -118,8 +118,25 @@ class TestTreeCore:
         assert result.percentage == 100.0
 
     def test_build_empty_tree(self):
-        """Test _build_empty_tree method."""
-        result = self.tree._build_empty_tree(top=10)
+        """Test building empty tree structure."""
+        data = [
+            {"country": "US", "device": "desktop", "active": False},
+        ]
+
+        tree_input = TreeInput(
+            data=data, fields=["country", "device"], query={"active": True}
+        )
+
+        result = self.tree.execute(tree_input)
+
+        assert result.name == "root"
+        assert len(result.children) == 0
+        assert result.value == 0
+        assert result.percentage == 0.0
+
+    def test_build_empty_tree_method(self):
+        """Test the _build_empty_tree method directly."""
+        result = self.tree._build_empty_tree(limit=10)
 
         expected = {
             "name": "root",
@@ -127,7 +144,7 @@ class TestTreeCore:
             "value": 0,
             "percentage": 0.0,
             "node": 0,
-            "top": 10,
+            "limit": 10,
         }
 
         assert result == expected
@@ -451,12 +468,12 @@ class TestTreeEdgeCases:
         ]
 
         tree_input = TreeInput(data=data, fields=["category", "value"])
-        tree_options = TreeOptions(top=3)
+        tree_options = TreeOptions(limit=3)
         result = self.tree.execute(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)
         assert result.value == 500
-        assert result.top == 3
+        assert result.limit == 3
 
         # Should complete reasonably quickly and not cause memory issues
 

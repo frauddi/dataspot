@@ -352,7 +352,7 @@ class TreeBuilder:
     This class specializes in:
     - Clean tree structure generation for visualization frameworks
     - Hierarchical data organization and optimization
-    - Top-N filtering for focused analysis
+    - top-N filtering for focused analysis
     - JSON-ready format generation with metadata
     - Performance optimization for large pattern sets
     - Statistical measure preservation during transformation
@@ -364,7 +364,7 @@ class TreeBuilder:
     Attributes:
         patterns (List[Pattern]): Source patterns for tree construction.
         total_records (int): Total records for statistical context.
-        top (int): Maximum number of top elements per tree level.
+        limit (int): Maximum number of top elements per tree level.
 
     Example:
         Building visualization trees for business dashboards:
@@ -380,12 +380,12 @@ class TreeBuilder:
         ...     Pattern(path="social > standard", count=200, percentage=20.0, depth=2, samples=[]),
         ... ]
         >>>
-        >>> builder = TreeBuilder(campaign_patterns, total_records=1000, top=5)
+        >>> builder = TreeBuilder(campaign_patterns, total_records=1000, limit=5)
         >>> tree_structure = builder.build()
         >>>
         >>> print(f"Marketing Dashboard Tree Structure:")
         >>> print(f"- Root value: {tree_structure['value']} total customers")
-        >>> print(f"- Top-level channels: {len(tree_structure['children'])}")
+        >>> print(f"- top-level channels: {len(tree_structure['children'])}")
         >>>
         >>> print(f"\\nChannel Performance Breakdown:")
         >>> for channel in tree_structure['children']:
@@ -397,7 +397,7 @@ class TreeBuilder:
         >>> # Example output:
         >>> # Marketing Dashboard Tree Structure:
         >>> # - Root value: 1000 total customers
-        >>> # - Top-level channels: 2
+        >>> # - top-level channels: 2
         >>> #
         >>> # Channel Performance Breakdown:
         >>> # - email: 50.0% reach
@@ -409,13 +409,13 @@ class TreeBuilder:
 
     Notes:
         - Tree structures are optimized for JSON serialization and visualization
-        - Top-N filtering ensures focused analysis on most significant patterns
+        - top-N filtering ensures focused analysis on most significant patterns
         - Hierarchical organization maintains business relationship context
         - Performance is optimized for real-time dashboard and reporting systems
 
     """
 
-    def __init__(self, patterns: List[Pattern], total_records: int, top: int):
+    def __init__(self, patterns: List[Pattern], total_records: int, limit: int):
         """Initialize tree builder with pattern data and configuration.
 
         Sets up the tree building engine with source patterns and optimization
@@ -426,7 +426,7 @@ class TreeBuilder:
                 Each pattern should contain path, count, percentage, and depth information.
             total_records (int): Total number of records in the original dataset
                 for statistical context and percentage validation.
-            top (int): Maximum number of top elements to include per tree level
+            limit (int): Maximum number of top elements to include per tree level
                 for focused analysis and performance optimization.
 
         Example:
@@ -439,29 +439,29 @@ class TreeBuilder:
             ...     Pattern(path="successful_login", count=350, percentage=70.0, depth=1, samples=[]),
             ... ]
             >>>
-            >>> # Build tree for security dashboard (top 10 per level)
-            >>> security_builder = TreeBuilder(security_patterns, total_records=500, top=10)
+            >>> # Build tree for security dashboard (limit 10 per level)
+            >>> security_builder = TreeBuilder(security_patterns, total_records=500, limit=10)
             >>>
             >>> print(f"Security Tree Builder Initialized:")
             >>> print(f"- Source patterns: {len(security_builder.patterns)}")
             >>> print(f"- Total records context: {security_builder.total_records}")
-            >>> print(f"- Focus level: Top {security_builder.top} per level")
+            >>> print(f"- Focus level: top {security_builder.limit} per level")
             >>>
             >>> # Example output:
             >>> # Security Tree Builder Initialized:
             >>> # - Source patterns: 3
             >>> # - Total records context: 500
-            >>> # - Focus level: Top 10 per level
+            >>> # - Focus level: top 10 per level
 
         Notes:
             - Configuration parameters are validated during initialization
             - Pattern data is preserved in original form for tree construction
-            - Top-N parameter enables performance optimization for large datasets
+            - top-N parameter enables performance optimization for large datasets
 
         """
         self.patterns = patterns
         self.total_records = total_records
-        self.top = top
+        self.limit = limit
 
     def build(self) -> Dict[str, Any]:
         r"""Build comprehensive, JSON-ready tree structure from pattern data.
@@ -474,7 +474,7 @@ class TreeBuilder:
         The building process includes:
         1. Pattern grouping by hierarchical relationships
         2. Statistical measure preservation and validation
-        3. Top-N filtering for performance optimization
+        3. top-N filtering for performance optimization
         4. JSON format optimization for visualization frameworks
         5. Metadata inclusion for business intelligence context
         6. Performance optimization for real-time applications
@@ -486,7 +486,7 @@ class TreeBuilder:
                 - value: Total record count for statistical context
                 - percentage: Root percentage (always 100.0)
                 - node: Tree level indicator (0 for root)
-                - top: Configuration parameter for reference
+                - limit: Configuration parameter for reference
 
         Example:
             Building customer segmentation tree for business intelligence:
@@ -500,7 +500,7 @@ class TreeBuilder:
             ...     Pattern(path="smb > north_america", count=180, percentage=36.0, depth=2, samples=[]),
             ... ]
             >>>
-            >>> builder = TreeBuilder(segmentation_patterns, total_records=500, top=3)
+            >>> builder = TreeBuilder(segmentation_patterns, total_records=500, limit=3)
             >>> customer_tree = builder.build()
             >>>
             >>> print(f"Customer Segmentation Tree Analysis:")
@@ -553,7 +553,7 @@ class TreeBuilder:
             ...     Pattern(path="phishing > email", count=150, percentage=30.0, depth=2, samples=[]),
             ... ]
             >>>
-            >>> security_builder = TreeBuilder(threat_patterns, total_records=500, top=5)
+            >>> security_builder = TreeBuilder(threat_patterns, total_records=500, limit=5)
             >>> threat_tree = security_builder.build()
             >>>
             >>> print(f"Security Threat Landscape Analysis:")
@@ -605,7 +605,7 @@ class TreeBuilder:
             "value": self.total_records,
             "percentage": 100.0,
             "node": 0,
-            "top": self.top,
+            "limit": self.limit,
         }
 
     def _build_empty_tree(self) -> Dict[str, Any]:
@@ -625,7 +625,7 @@ class TreeBuilder:
             Handling empty pattern scenarios:
 
             >>> # Empty pattern scenario
-            >>> empty_builder = TreeBuilder([], total_records=100, top=5)
+            >>> empty_builder = TreeBuilder([], total_records=100, limit=5)
             >>> empty_tree = empty_builder._build_empty_tree()
             >>>
             >>> print(f"Empty Tree Structure:")
@@ -653,7 +653,7 @@ class TreeBuilder:
             "value": self.total_records,
             "percentage": 100.0,
             "node": 0,
-            "top": self.top,
+            "limit": self.limit,
         }
 
     def _group_patterns_by_hierarchy(self) -> Dict[str, Any]:
@@ -761,10 +761,10 @@ class TreeBuilder:
         """
         children = []
 
-        # Sort by count and take top N
+        # Sort by count and take limit N
         sorted_items = sorted(
             data.items(), key=lambda x: x[1].get("count", 0), reverse=True
-        )[: self.top]
+        )[: self.limit]
 
         for name, node_data in sorted_items:
             node = {

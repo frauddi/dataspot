@@ -424,7 +424,7 @@ class Tree(Base):
                 value=0,
                 percentage=0.0,
                 node=0,
-                top=options.top,
+                limit=options.limit,
                 statistics=empty_statistics,
                 fields_analyzed=input.fields,
             )
@@ -441,7 +441,9 @@ class Tree(Base):
         filtered_patterns = PatternFilter(all_patterns).apply_all(**filter_kwargs)
 
         # Build and return clean JSON tree
-        tree_result = TreeBuilder(filtered_patterns, total_records, options.top).build()
+        tree_result = TreeBuilder(
+            filtered_patterns, total_records, options.limit
+        ).build()
 
         # Convert tree result to TreeOutput
         children = self._convert_tree_children(tree_result.get("children", []))
@@ -459,7 +461,7 @@ class Tree(Base):
             value=tree_result.get("value", 0),
             percentage=tree_result.get("percentage", 0.0),
             node=tree_result.get("node", 0),
-            top=options.top,
+            limit=options.limit,
             statistics=statistics,
             fields_analyzed=input.fields,
         )
@@ -552,7 +554,7 @@ class Tree(Base):
 
         return tree_nodes
 
-    def _build_empty_tree(self, top: int) -> Dict[str, Any]:
+    def _build_empty_tree(self, limit: int) -> Dict[str, Any]:
         """Build clean empty tree structure for edge cases and error handling.
 
         Creates a properly structured empty tree when no data is available
@@ -561,7 +563,7 @@ class Tree(Base):
         or completely filtered out.
 
         Args:
-            top (int): Maximum number of top elements per tree level,
+            limit (int): Maximum number of top elements per tree level,
                 preserved in empty tree structure for configuration consistency.
 
         Returns:
@@ -575,7 +577,7 @@ class Tree(Base):
             Handling empty dataset scenarios gracefully:
 
             >>> # Empty tree construction
-            >>> empty_tree = tree._build_empty_tree(top=5)
+            >>> empty_tree = tree._build_empty_tree(limit=5)
             >>>
             >>> print(f"Empty Tree Structure:")
             >>> print(f"- Root name: {empty_tree['name']}")
@@ -583,7 +585,7 @@ class Tree(Base):
             >>> print(f"- Root value: {empty_tree['value']}")
             >>> print(f"- Coverage percentage: {empty_tree['percentage']}")
             >>> print(f"- Tree level: {empty_tree['node']}")
-            >>> print(f"- Configuration preserved: top={empty_tree['top']}")
+            >>> print(f"- Configuration preserved: limit={empty_tree['limit']}")
             >>>
             >>> # Example output:
             >>> # Empty Tree Structure:
@@ -592,7 +594,7 @@ class Tree(Base):
             >>> # - Root value: 0
             >>> # - Coverage percentage: 0.0
             >>> # - Tree level: 0
-            >>> # - Configuration preserved: top=5
+            >>> # - Configuration preserved: limit=5
 
         Notes:
             - Maintains consistent structure for visualization framework integration
@@ -607,5 +609,5 @@ class Tree(Base):
             "value": 0,
             "percentage": 0.0,
             "node": 0,
-            "top": top,
+            "limit": limit,
         }

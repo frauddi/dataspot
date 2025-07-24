@@ -227,7 +227,7 @@ class TestDataspotTree:
         tree_input = TreeInput(
             data=self.test_data, fields=["type"], query={"category": "A"}
         )
-        tree_options = TreeOptions(top=3, min_count=1, max_depth=2)
+        tree_options = TreeOptions(limit=3, min_count=1, max_depth=2)
         result = self.dataspot.tree(tree_input, tree_options)
 
         assert isinstance(result, TreeOutput)

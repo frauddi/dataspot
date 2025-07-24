@@ -1,107 +1,106 @@
-"""Tree Visualization Examples.
+#!/usr/bin/env python3
+"""Tree Visualization.
 
-Shows how to use the tree() method to build hierarchical JSON structures for dashboards and visualization.
+This example demonstrates how to use the Tree analyzer to create
+hierarchical data structures for visualization purposes.
 """
 
-import json
-
-from dataspot import Dataspot
+from dataspot.analyzers.tree import Tree
 from dataspot.models.tree import TreeInput, TreeOptions
 
-# Simple e-commerce data
+# Sample e-commerce data
 data = [
-    {
-        "country": "US",
-        "device": "mobile",
-        "user_type": "premium",
-        "category": "electronics",
-    },
-    {"country": "US", "device": "mobile", "user_type": "free", "category": "books"},
-    {
-        "country": "US",
-        "device": "desktop",
-        "user_type": "premium",
-        "category": "electronics",
-    },
-    {
-        "country": "EU",
-        "device": "mobile",
-        "user_type": "premium",
-        "category": "clothing",
-    },
-    {
-        "country": "EU",
-        "device": "tablet",
-        "user_type": "free",
-        "category": "electronics",
-    },
-    {"country": "CA", "device": "mobile", "user_type": "premium", "category": "books"},
-] * 2  # 12 records total
+    {"country": "US", "device": "mobile", "category": "electronics"},
+    {"country": "US", "device": "mobile", "category": "electronics"},
+    {"country": "US", "device": "mobile", "category": "clothing"},
+    {"country": "US", "device": "desktop", "category": "electronics"},
+    {"country": "US", "device": "desktop", "category": "electronics"},
+    {"country": "UK", "device": "mobile", "category": "electronics"},
+    {"country": "UK", "device": "mobile", "category": "books"},
+    {"country": "UK", "device": "desktop", "category": "books"},
+    {"country": "DE", "device": "mobile", "category": "electronics"},
+    {"country": "DE", "device": "tablet", "category": "clothing"},
+]
 
+print("🌳 Tree Visualization Examples\n")
 
-def main():
-    """Tree visualization examples."""
-    dataspot = Dataspot()
+# Basic tree visualization
+print("1. Basic Tree Structure:")
+tree_basic = Tree().execute(
+    TreeInput(data=data, fields=["country", "device"]), TreeOptions(limit=3)
+)
 
-    print("=== 1. Basic Tree Structure ===")
+print(f"Root: {tree_basic.name}")
+print(f"Top level children: {len(tree_basic.children)}")
+for child in tree_basic.children:
+    print(f"  - {child.name}: {child.value} records ({child.percentage:.1f}%)")
 
-    # Simple 2-level tree
-    tree_basic = dataspot.tree(
-        TreeInput(data=data, fields=["country", "device"]), TreeOptions(top=3)
-    )
-    print(f"Root value: {tree_basic.value} records")
-    print(f"Top level children: {len(tree_basic.children)}")
+print("\n" + "=" * 50 + "\n")
 
-    # Show tree as JSON
-    print("\nTree structure:")
-    tree_dict = tree_basic.to_dict()
-    print(json.dumps(tree_dict, indent=2))
+# Tree with filters
+print("2. Tree with Count Filter:")
+tree_filtered = Tree().execute(
+    TreeInput(data=data, fields=["country", "device", "category"]),
+    TreeOptions(min_count=2, limit=3),
+)
 
-    print("\n=== 2. Filtered Tree ===")
+print(f"Filtered patterns: {tree_filtered.statistics.patterns_found}")
+print("Country breakdown:")
+for child in tree_filtered.children:
+    print(f"  - {child.name}: {child.value} records")
 
-    # Tree with filtering
-    tree_filtered = dataspot.tree(
-        TreeInput(data=data, fields=["country", "device", "user_type"]),
-        TreeOptions(min_count=2, top=3),
-    )
-    print(f"Filtered tree children: {len(tree_filtered.children)}")
+print("\n" + "=" * 50 + "\n")
 
-    print("\n=== 3. Query + Tree ===")
+# Tree with percentage filter
+print("3. Tree with Percentage Filter:")
+tree_percentage = Tree().execute(
+    TreeInput(data=data, fields=["country", "device"]),
+    TreeOptions(limit=3),
+)
 
-    # Tree with query filter
-    tree_query = dataspot.tree(
-        TreeInput(data=data, fields=["device", "user_type"], query={"country": "US"}),
-        TreeOptions(top=3),
-    )
-    print(f"US-only tree value: {tree_query.value} records")
-    print(f"US tree children: {len(tree_query.children)}")
+print("High-concentration patterns:")
+for child in tree_percentage.children:
+    if child.percentage > 20:
+        print(f"  - {child.name}: {child.percentage:.1f}%")
 
-    print("\n=== 4. Dashboard Structure ===")
+print("\n" + "=" * 50 + "\n")
 
-    # Optimized for dashboard
-    tree_dashboard = dataspot.tree(
-        TreeInput(data=data, fields=["country", "device", "user_type"]),
-        TreeOptions(min_percentage=15.0, top=2),
-    )
+# Tree with minimum percentage threshold
+print("4. Tree with Minimum Percentage Threshold:")
+tree_insights = Tree().execute(
+    TreeInput(data=data, fields=["country", "device", "category"]),
+    TreeOptions(min_percentage=15.0, limit=2),
+)
 
-    print("Dashboard-ready tree:")
-    dashboard_dict = tree_dashboard.to_dict()
-    print(json.dumps(dashboard_dict, indent=2))
+print(f"Total records analyzed: {tree_insights.statistics.total_records}")
+print(f"Patterns found: {tree_insights.statistics.patterns_found}")
 
-    print("\n=== 5. Tree Insights ===")
+if tree_insights.children:
+    top_pattern = tree_insights.children[0]
+    print(f"🌍 Top pattern: {top_pattern.name} ({top_pattern.percentage:.1f}%)")
 
-    # Extract key insights
-    tree_insights = dataspot.tree(
-        TreeInput(data=data, fields=["country", "device"]), TreeOptions()
-    )
+print("\n" + "=" * 50 + "\n")
 
-    print(f"📊 Total records: {tree_insights.value}")
-    print(f"🔝 Main patterns: {len(tree_insights.children)}")
+# Export tree as JSON for D3.js or other visualization libraries
+print("5. JSON Export for Visualization Libraries:")
+tree_json = Tree().execute(
+    TreeInput(data=data, fields=["country", "device"]), TreeOptions(limit=3)
+)
 
-    if tree_insights.children:
-        top_pattern = tree_insights.children[0]
-        print(f"🌍 Top pattern: {top_pattern.name} ({top_pattern.percentage:.1f}%)")
+# Convert to dict for JSON export
+tree_dict = tree_json.to_dict()
+print("JSON structure keys:", list(tree_dict.keys()))
+print(f"Ready for D3.js: {len(tree_dict['children'])} top-level nodes")
 
+# Example of how this could be used with D3.js
+print("\n📊 Visualization Integration:")
+print("This tree structure can be directly used with:")
+print("- D3.js hierarchical layouts")
+print("- Chart.js tree charts")
+print("- React tree components")
+print("- Custom visualization frameworks")
 
-if __name__ == "__main__":
-    main()
+print("\nTree statistics:")
+print(f"- Total records: {tree_json.statistics.total_records}")
+print(f"- Patterns discovered: {tree_json.statistics.patterns_found}")
+print(f"- Analysis depth: {len(tree_json.fields_analyzed)} levels")
