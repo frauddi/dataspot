@@ -19,22 +19,42 @@ class TreeInput:
 
 @dataclass
 class TreeOptions:
-    """Options model for the tree() method."""
+    """Options for hierarchical tree visualization.
 
-    top: int = 5  # Number of top elements to consider per level
-    min_value: Optional[int] = None  # Minimum count for a node to be included
-    min_percentage: Optional[float] = (
-        None  # Minimum percentage for a node to be included
-    )
-    max_value: Optional[int] = None  # Maximum count for a node to be included
-    max_percentage: Optional[float] = (
-        None  # Maximum percentage for a node to be included
-    )
-    min_depth: Optional[int] = None  # Minimum depth for nodes to be included
-    max_depth: Optional[int] = None  # Maximum depth to analyze (limits tree depth)
-    contains: Optional[str] = None  # Node name must contain this text
-    exclude: Optional[List[str]] = None  # Node name must NOT contain these texts
-    regex: Optional[str] = None  # Node name must match this regex pattern
+    Args:
+        top: Top elements per tree level (1-20).
+            Limits branches per node. Common: 5 (balanced), 3 (simple), 10 (detailed).
+        min_count: Minimum record count per node.
+            Excludes small nodes. Common: 1 (show all), 5 (significant only), 10 (major only).
+        min_percentage: Minimum percentage per node (0.0-100.0).
+            Excludes small percentage nodes. Common: 1.0 (1%), 5.0 (5%).
+        max_count: Maximum record count per node.
+            Excludes large nodes. Rare usage for outlier removal.
+        max_percentage: Maximum percentage per node (0.0-100.0).
+            Excludes dominant nodes. Rare usage.
+        min_depth: Minimum tree depth (1+).
+            Focuses on deeper patterns. Example: 2 for multi-level only.
+        max_depth: Maximum tree depth (1+).
+            Controls tree complexity. Common: 3-4 to avoid over-nesting.
+        contains: Node name must contain this text.
+            Filters tree to specific patterns. Example: "error" for error analysis.
+        exclude: Node name must NOT contain these texts.
+            Removes unwanted nodes. Example: ["test", "demo"].
+        regex: Node name must match this regex.
+            Advanced filtering. Example: "^(high|medium|low)" for risk levels.
+
+    """
+
+    top: int = 5
+    min_count: Optional[int] = None
+    min_percentage: Optional[float] = None
+    max_count: Optional[int] = None
+    max_percentage: Optional[float] = None
+    min_depth: Optional[int] = None
+    max_depth: Optional[int] = None
+    contains: Optional[str] = None
+    exclude: Optional[List[str]] = None
+    regex: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert tree options to dictionary."""

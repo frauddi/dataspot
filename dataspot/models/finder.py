@@ -21,22 +21,48 @@ class FindInput:
 
 @dataclass
 class FindOptions:
-    """Options model for the find() method."""
+    """Options for pattern finding analysis.
 
-    min_percentage: float = 1.0  # Minimum concentration threshold (default: 1.0)
-    max_percentage: Optional[float] = None  # Maximum concentration threshold
-    min_count: Optional[int] = None  # Minimum record count per pattern
-    max_count: Optional[int] = None  # Maximum record count per pattern
-    min_depth: Optional[int] = None  # Minimum depth for patterns to be included
-    max_depth: Optional[int] = None  # Maximum depth for patterns to be included
-    contains: Optional[str] = None  # Pattern path must contain this text
-    exclude: Optional[List[str]] = None  # Pattern path must NOT contain these texts
-    regex: Optional[str] = None  # Pattern path must match this regex pattern
-    limit: Optional[int] = None  # Maximum number of patterns to return
-    sort_by: Optional[str] = None  # Sort field: 'percentage', 'count', 'depth'
-    reverse: Optional[bool] = (
-        None  # Sort in descending order (True) or ascending (False)
-    )
+    Args:
+        min_percentage: Minimum concentration threshold (0.0-100.0).
+            Filters out patterns below this percentage. Common: 1.0 (1%), 5.0 (5%).
+        max_percentage: Maximum concentration threshold (0.0-100.0).
+            Filters out patterns above this percentage. Useful to exclude 100% patterns.
+        min_count: Minimum record count per pattern.
+            Patterns with fewer records are excluded. Common: 2, 5, 10.
+        max_count: Maximum record count per pattern.
+            Patterns with more records are excluded. Rare but useful for outliers.
+        min_depth: Minimum pattern depth (1+).
+            Only includes patterns at this depth or deeper. Example: 2 for multi-field patterns.
+        max_depth: Maximum pattern depth (1+).
+            Limits analysis to this depth. Example: 3 to avoid over-segmentation.
+        contains: Pattern path must contain this text.
+            Case-sensitive string filter. Example: "fraud" matches ["country", "fraud", "high"].
+        exclude: Pattern path must NOT contain these texts.
+            List of strings to exclude. Example: ["test", "demo"] for production analysis.
+        regex: Pattern path must match this regex.
+            Advanced filtering with regex. Example: "^(US|UK)" for patterns starting with US or UK.
+        limit: Maximum number of patterns to return.
+            Caps results for performance. Common: 10, 50, 100.
+        sort_by: Sort field ('percentage', 'count', 'depth').
+            Orders results by chosen metric. Default: percentage.
+        reverse: Sort in descending order.
+            True=highest first, False=lowest first, None=auto (descending for percentage).
+
+    """
+
+    min_percentage: float = 1.0
+    max_percentage: Optional[float] = None
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
+    min_depth: Optional[int] = None
+    max_depth: Optional[int] = None
+    contains: Optional[str] = None
+    exclude: Optional[List[str]] = None
+    regex: Optional[str] = None
+    limit: Optional[int] = None
+    sort_by: Optional[str] = None
+    reverse: Optional[bool] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert find options to dictionary."""

@@ -16,25 +16,54 @@ class DiscoverInput:
 
 @dataclass
 class DiscoverOptions:
-    """Options model for the discover() method."""
+    """Options for automatic pattern discovery.
 
-    max_fields: int = 3  # Maximum number of fields to combine (default: 3)
-    max_combinations: int = 10  # Maximum combinations to try (default: 10)
-    min_percentage: float = 10.0  # Minimum concentration to consider (default: 10%)
-    # Additional filtering options (same as find method)
-    max_percentage: Optional[float] = None  # Maximum concentration percentage threshold
-    min_count: Optional[int] = None  # Minimum record count per pattern
-    max_count: Optional[int] = None  # Maximum record count per pattern
-    min_depth: Optional[int] = None  # Minimum depth for patterns to be included
-    max_depth: Optional[int] = None  # Maximum depth for patterns to be included
-    contains: Optional[str] = None  # Pattern path must contain this text
-    exclude: Optional[List[str]] = None  # Pattern path must NOT contain these texts
-    regex: Optional[str] = None  # Pattern path must match this regex pattern
-    limit: Optional[int] = None  # Maximum number of patterns to return
-    sort_by: Optional[str] = None  # Sort field: 'percentage', 'count', 'depth'
-    reverse: Optional[bool] = (
-        None  # Sort in descending order (True) or ascending (False)
-    )
+    Args:
+        max_fields: Maximum fields per combination (1-5).
+            Controls analysis complexity. Common: 3 (good balance), 2 (simple), 4 (complex).
+        max_combinations: Maximum combinations to test (5-50).
+            Limits computation time. Common: 10 (fast), 20 (balanced), 50 (thorough).
+        min_percentage: Minimum concentration threshold (0.0-100.0).
+            Filters weak patterns. Common: 5.0 (5%), 10.0 (10%), 20.0 (20%).
+        max_percentage: Maximum concentration threshold (0.0-100.0).
+            Excludes overly concentrated patterns. Rare usage.
+        min_count: Minimum record count per pattern.
+            Ensures statistical significance. Common: 2, 5, 10.
+        max_count: Maximum record count per pattern.
+            Excludes dominant patterns. Rare usage.
+        min_depth: Minimum pattern depth (1+).
+            Focuses on multi-field patterns. Example: 2 for combinations only.
+        max_depth: Maximum pattern depth (1+).
+            Controls analysis depth. Common: 3-4 to avoid over-segmentation.
+        contains: Pattern must contain this text.
+            Focuses on specific patterns. Example: "high_risk" for risk analysis.
+        exclude: Pattern must NOT contain these texts.
+            Removes unwanted patterns. Example: ["test", "demo"] for production.
+        regex: Pattern must match this regex.
+            Advanced pattern filtering. Example: "^(fraud|risk)" for security patterns.
+        limit: Maximum patterns to return.
+            Controls output size. Common: 10, 20, 50.
+        sort_by: Sort field ('percentage', 'count', 'depth').
+            Orders discovered patterns. Default: percentage.
+        reverse: Sort descending.
+            True=highest first, False=lowest first, None=auto.
+
+    """
+
+    max_fields: int = 3
+    max_combinations: int = 10
+    min_percentage: float = 10.0
+    max_percentage: Optional[float] = None
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
+    min_depth: Optional[int] = None
+    max_depth: Optional[int] = None
+    contains: Optional[str] = None
+    exclude: Optional[List[str]] = None
+    regex: Optional[str] = None
+    limit: Optional[int] = None
+    sort_by: Optional[str] = None
+    reverse: Optional[bool] = None
 
 
 @dataclass

@@ -17,24 +17,48 @@ class AnalyzeInput:
 
 @dataclass
 class AnalyzeOptions:
-    """Options model for the analyze() method.
+    """Options for comprehensive data analysis.
 
-    Contains the same filtering and sorting options as FindOptions
-    since analyze delegates to find internally.
+    Args:
+        min_percentage: Minimum concentration threshold (0.0-100.0).
+            Filters out weak patterns. Common: 1.0 (1%), 5.0 (5%), 10.0 (10%).
+        max_percentage: Maximum concentration threshold (0.0-100.0).
+            Excludes overly concentrated patterns. Rare usage.
+        min_count: Minimum record count per pattern.
+            Ensures statistical significance. Common: 2, 5, 10.
+        max_count: Maximum record count per pattern.
+            Excludes dominant patterns. Rare usage.
+        min_depth: Minimum pattern depth (1+).
+            Focuses on multi-field patterns. Example: 2 for combinations only.
+        max_depth: Maximum pattern depth (1+).
+            Controls analysis depth. Common: 3-4 to avoid over-segmentation.
+        contains: Pattern must contain this text.
+            Focuses analysis on specific patterns. Example: "high_value" for revenue analysis.
+        exclude: Pattern must NOT contain these texts.
+            Removes unwanted patterns. Example: ["test", "demo"] for production analysis.
+        regex: Pattern must match this regex.
+            Advanced filtering. Example: "^(premium|gold)" for customer analysis.
+        limit: Maximum patterns to return.
+            Controls output size. Common: 20, 50, 100.
+        sort_by: Sort field ('percentage', 'count', 'depth').
+            Orders analysis results. Default: percentage.
+        reverse: Sort descending.
+            True=highest first, False=lowest first, None=auto.
+
     """
 
-    min_percentage: float = 1.0  # Minimum concentration percentage threshold
-    max_percentage: Optional[float] = None  # Maximum concentration percentage threshold
-    min_count: Optional[int] = None  # Minimum record count per pattern
-    max_count: Optional[int] = None  # Maximum record count per pattern
-    min_depth: Optional[int] = None  # Minimum depth for patterns to be included
-    max_depth: Optional[int] = None  # Maximum depth for patterns to be included
-    contains: Optional[str] = None  # Pattern path must contain this text
-    exclude: Optional[List[str]] = None  # Pattern path must NOT contain these texts
-    regex: Optional[str] = None  # Pattern path must match this regex pattern
-    limit: Optional[int] = None  # Maximum number of patterns to return
-    sort_by: Optional[str] = None  # Field to sort by ('percentage', 'count', 'depth')
-    reverse: Optional[bool] = None  # Sort order (None=auto, True=desc, False=asc)
+    min_percentage: float = 1.0
+    max_percentage: Optional[float] = None
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
+    min_depth: Optional[int] = None
+    max_depth: Optional[int] = None
+    contains: Optional[str] = None
+    exclude: Optional[List[str]] = None
+    regex: Optional[str] = None
+    limit: Optional[int] = None
+    sort_by: Optional[str] = None
+    reverse: Optional[bool] = None
 
 
 @dataclass
