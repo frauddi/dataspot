@@ -352,7 +352,7 @@ class TreeBuilder:
     This class specializes in:
     - Clean tree structure generation for visualization frameworks
     - Hierarchical data organization and optimization
-    - top-N filtering for focused analysis
+    - Top-N filtering for focused analysis
     - JSON-ready format generation with metadata
     - Performance optimization for large pattern sets
     - Statistical measure preservation during transformation
@@ -409,7 +409,7 @@ class TreeBuilder:
 
     Notes:
         - Tree structures are optimized for JSON serialization and visualization
-        - top-N filtering ensures focused analysis on most significant patterns
+        - Top-N filtering ensures focused analysis on most significant patterns
         - Hierarchical organization maintains business relationship context
         - Performance is optimized for real-time dashboard and reporting systems
 
@@ -456,7 +456,7 @@ class TreeBuilder:
         Notes:
             - Configuration parameters are validated during initialization
             - Pattern data is preserved in original form for tree construction
-            - top-N parameter enables performance optimization for large datasets
+            - Top-N parameter enables performance optimization for large datasets
 
         """
         self.patterns = patterns
@@ -474,7 +474,7 @@ class TreeBuilder:
         The building process includes:
         1. Pattern grouping by hierarchical relationships
         2. Statistical measure preservation and validation
-        3. top-N filtering for performance optimization
+        3. Top-N filtering for performance optimization
         4. JSON format optimization for visualization frameworks
         5. Metadata inclusion for business intelligence context
         6. Performance optimization for real-time applications
@@ -724,7 +724,7 @@ class TreeBuilder:
 
         Transforms internal tree data structure into JSON format optimized
         for visualization frameworks and business intelligence dashboards.
-        Applies top-N filtering and statistical measure preservation during
+        Applies Top-N filtering and statistical measure preservation during
         the conversion process.
 
         Args:
@@ -752,7 +752,7 @@ class TreeBuilder:
             >>> # ]
 
         Notes:
-            - Applies top-N filtering for performance optimization
+            - Applies Top-N filtering for performance optimization
             - Preserves all statistical measures for business analysis
             - Sorts by count for most significant patterns first
             - Maintains hierarchical structure for visualization frameworks
