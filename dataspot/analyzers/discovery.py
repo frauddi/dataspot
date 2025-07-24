@@ -342,19 +342,23 @@ class Discovery(Base):
             for combo in combinations_tried_data
         ]
 
+        # Apply limit option properly
+        limit = options.limit if options.limit is not None else 20
+        final_patterns = top_patterns[:limit]
+
         # Create DiscoveryStatistics dataclass
         statistics = DiscoveryStatistics(
             total_records=len(data),
             fields_analyzed=len(available_fields),
             combinations_tried=len(combinations_tried),
-            patterns_discovered=len(top_patterns[:20]),
-            best_concentration=max([p.percentage for p in top_patterns[:20]])
-            if top_patterns
+            patterns_discovered=len(final_patterns),
+            best_concentration=max([p.percentage for p in final_patterns])
+            if final_patterns
             else 0,
         )
 
         return DiscoverOutput(
-            top_patterns=top_patterns[:20],  # Top 20 patterns
+            top_patterns=final_patterns,
             field_ranking=field_ranking,
             combinations_tried=combinations_tried,
             statistics=statistics,

@@ -340,10 +340,14 @@ class Compare(Base):
             change_threshold=options.change_threshold,
         )
 
+        # Apply limit to changes if specified
+        if options.limit is not None:
+            changes_data = changes_data[: options.limit]
+
         # Convert changes to ChangeItem dataclasses
         changes = [self._dict_to_change_item(change) for change in changes_data]
 
-        # Categorize patterns
+        # Categorize patterns (using limited changes_data)
         categorized_patterns = self._categorize_patterns(changes_data)
 
         # Convert categorized patterns to ChangeItem dataclasses

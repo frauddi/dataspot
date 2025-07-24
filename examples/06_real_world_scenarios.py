@@ -266,7 +266,7 @@ def main():
     # Build hierarchical tree for dashboard
     tree = dataspot.tree(
         TreeInput(data=dashboard_data, fields=["region", "device", "user"]),
-        TreeOptions(min_percentage=10.0, top=3),
+        TreeOptions(min_percentage=10.0, limit=3),
     )
 
     print("Dashboard tree structure:")
