@@ -385,7 +385,7 @@ class TreeBuilder:
         >>>
         >>> print(f"Marketing Dashboard Tree Structure:")
         >>> print(f"- Root value: {tree_structure['value']} total customers")
-        >>> print(f"- top-level channels: {len(tree_structure['children'])}")
+        >>> print(f"- Top-level channels: {len(tree_structure['children'])}")
         >>>
         >>> print(f"\\nChannel Performance Breakdown:")
         >>> for channel in tree_structure['children']:
@@ -397,7 +397,7 @@ class TreeBuilder:
         >>> # Example output:
         >>> # Marketing Dashboard Tree Structure:
         >>> # - Root value: 1000 total customers
-        >>> # - top-level channels: 2
+        >>> # - Top-level channels: 2
         >>> #
         >>> # Channel Performance Breakdown:
         >>> # - email: 50.0% reach

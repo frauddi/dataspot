@@ -90,7 +90,7 @@ tree_json = Tree().execute(
 # Convert to dict for JSON export
 tree_dict = tree_json.to_dict()
 print("JSON structure keys:", list(tree_dict.keys()))
-print(f"Ready for D3.js: {len(tree_dict['children'])} top-level nodes")
+print(f"Ready for D3.js: {len(tree_dict['children'])} Top-level nodes")
 
 # Example of how this could be used with D3.js
 print("\n📊 Visualization Integration:")
