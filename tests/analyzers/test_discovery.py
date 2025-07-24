@@ -149,19 +149,14 @@ class TestDiscoveryFieldDetection:
 
     def test_is_suitable_for_analysis_edge_cases(self):
         """Test edge cases in field suitability."""
-        # Single unique value
         single_value_data = [{"field": "A"}] * 5
-        assert not self.discovery._is_suitable_for_analysis(
-            single_value_data, "field", 5
-        )
+        assert self.discovery._is_suitable_for_analysis(single_value_data, "field", 5)
 
-        # Too few records
         few_records_data = [{"field": "A"}]
         assert not self.discovery._is_suitable_for_analysis(
             few_records_data, "field", 1
         )
 
-        # None values
         none_data = [{"field": None}] * 3
         assert not self.discovery._is_suitable_for_analysis(none_data, "field", 3)
 

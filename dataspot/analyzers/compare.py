@@ -673,7 +673,15 @@ class Compare(Base):
                 "statistical_significance": stats,
             }
 
-            changes.append(change_info)
+            # Only include patterns that have actual changes
+            has_real_change = (
+                count_change != 0
+                or change_info["is_new"]
+                or change_info["is_disappeared"]
+            )
+
+            if has_real_change:
+                changes.append(change_info)
 
         # Sort by significance and magnitude
         changes.sort(

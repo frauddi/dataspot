@@ -324,10 +324,11 @@ class TestCompareEdgeCases:
         compare_options = CompareOptions()
         result = self.compare.execute(compare_input, compare_options)
 
-        # Should have changes but they should all be stable
-        assert len(result.changes) > 0
-        stable_changes = [c for c in result.changes if c.status == "STABLE"]
-        assert len(stable_changes) > 0
+        # Identical data should have no changes at all
+        assert len(result.changes) == 0
+        assert result.statistics.significant_changes == 0
+        assert len(result.new_patterns) == 0
+        assert len(result.disappeared_patterns) == 0
 
     def test_execute_with_statistical_significance_comprehensive(self):
         """Test comprehensive statistical significance calculation."""

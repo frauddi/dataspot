@@ -528,16 +528,18 @@ class Discovery(Base):
         total_values = len(non_null_values)
         unique_ratio = unique_values / total_values
 
-        # Skip if only one unique value
-        if unique_values <= 1:
-            return False
+        # Allow constant fields
+        if unique_values == 1:
+            return (
+                True  # Constant fields represent important 100% concentration patterns
+            )
 
         # For very small samples, be more lenient but still require variation
         if total_values <= 5:
-            return unique_values >= 2  # At least some variation
+            return unique_values >= 1  # At least 1 value
 
         return (
-            unique_values >= 2  # At least 2 different values
+            unique_values >= 1  # At least 1 value
             and unique_values <= total_values * 0.8  # Not too many unique values
             and unique_ratio < 0.95  # Not mostly unique (like IDs)
         )
