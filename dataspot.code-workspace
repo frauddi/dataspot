@@ -7,12 +7,10 @@
     ],
     "settings": {
         // Python Environment Configuration
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python", // Default Python interpreter
-        "python.pythonPath": "${workspaceFolder}/.venv/bin/python", // Legacy Python path setting
+        "python.defaultInterpreterPath": "./.venv/bin/python", // Default Python interpreter
+        "python.pythonPath": "${workspaceFolder}/.venv/bin/python", // Python path setting
         "python.analysis.extraPaths": [ // Additional Python path for imports
-            "${workspaceFolder}/dataspot",
-            "${workspaceFolder}",
-            "${workspaceFolder}/.venv/lib/python3.11/site-packages"
+            "${workspaceFolder}"
         ],
 
         // Formatting settings
@@ -138,10 +136,17 @@
             "tests", // Test discovery root directory
             "-v", // Verbose output
             "--tb=short", // Shorter traceback format
-            "--cov=dataspot", // Enable coverage for dataspot directory (no "apps")
-            "--cov-report=term-missing" // Show missing coverage in terminal
+            "--cache-clear", // Clear cache
+            "--disable-warnings" // Disable warnings for cleaner output
         ],
-        "python.testing.autoTestDiscoverOnSaveEnabled": true
+        "python.testing.pytestPath": "./.venv/bin/pytest",
+        "python.testing.autoTestDiscoverOnSaveEnabled": true,
+        "python.testing.debugPort": 3000,
+        "python.testing.cwd": "${workspaceFolder}",
+
+        // Additional Python settings to ensure proper discovery
+        "python.analysis.autoSearchPaths": true,
+        "python.analysis.diagnosticMode": "workspace"
     },
     "extensions": {
         "recommendations": [

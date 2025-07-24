@@ -76,7 +76,7 @@ lint.ignore = [
 line-length = 88
 target-version = "py311"
 # Sources paths to check
-src = ["src"]
+src = ["dataspot"]
 # Ignore generated files
 exclude = []
 
