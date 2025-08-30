@@ -340,7 +340,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- **Created by [@eliosf27](https://github.com/eliosf27)** - Original algorithm and implementation
+- **Created by [@3l1070r](https://github.com/3l1070r)** - Original algorithm and implementation
 - **Sponsored by [Frauddi](https://frauddi.com)** - Field testing and open source support
 - **Inspired by real fraud detection challenges** - Built to solve actual problems
 
