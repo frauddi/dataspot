@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use Dataspot, please cite it as follows."
+authors:
+  - name: "Elio Rincón"
+    alias: "3l1070r"
+    website: "https://3l1070r.dev"
+title: "Dataspot: Find data concentration patterns and dataspots"
+version: 1.0.0 # O la versión que tengas en __init__.py
+date-released: 2026-01-25
+url: "https://github.com/frauddi/dataspot"
+license: MIT

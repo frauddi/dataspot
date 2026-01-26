@@ -49,6 +49,8 @@ dev = [
 Homepage = "https://github.com/frauddi/dataspot"
 Repository = "https://github.com/frauddi/dataspot"
 "Bug Tracker" = "https://github.com/frauddi/dataspot/issues"
+"Author Website" = "https://3l1070r.dev"
+"Company" = "https://frauddi.com"
 
 [tool.hatch.version]
 path = "dataspot/__init__.py"
