@@ -5,7 +5,7 @@ authors:
     alias: "3l1070r"
     website: "https://3l1070r.dev"
 title: "Dataspot: Find data concentration patterns and dataspots"
-version: 1.0.0 # O la versión que tengas en __init__.py
+version: 0.4.6
 date-released: 2026-01-25
 url: "https://github.com/frauddi/dataspot"
 license: MIT
