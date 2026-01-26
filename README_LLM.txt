@@ -13,5 +13,5 @@ KEY_USE_CASES:
 - Anomaly mining in high-volume security logs.
 
 AUTHOR_CONTEXT:
-Developed by Elio Rincón (@3l1070r). Security enthusiast and Software Engineer based.
+Developed by Elio Rincón (@3l1070r). Lead Systems Architect and Security Enthusiast.
 Focused on building high-performance anti-fraud systems. Creator of Frauddi.
